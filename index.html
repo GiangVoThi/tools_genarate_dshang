@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invoice Data Processor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'IBM Plex Mono', monospace; min-height: 100vh; background: #0f1117; color: #e8e8e8; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #1a1d27; }
+    ::-webkit-scrollbar-thumb { background: #3a3f55; border-radius: 3px; }
+
+    /* Header */
+    #app-header {
+      border-bottom: 1px solid #1e2130;
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .dot { width: 8px; height: 8px; background: #4f6ef7; border-radius: 50%; flex-shrink: 0; }
+    .header-title { font-size: 13px; color: #8892b0; letter-spacing: 0.12em; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    #header-filename { font-size: 11px; color: #4a506a; display: none; }
+
+    /* Badges */
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 2px;
+      font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .badge-blue { background: #1a2340; color: #4f6ef7; border: 1px solid #2e3d6e; }
+    .badge-green { background: #0e2018; color: #2fc87a; border: 1px solid #1e4030; }
+
+    /* Main content */
+    #main { padding: 32px; }
+
+    /* Upload zone */
+    #upload-zone {
+      border: 1.5px dashed #2e3348;
+      border-radius: 4px;
+      padding: 48px 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: #13161f;
+    }
+    #upload-zone:hover, #upload-zone.drag-over {
+      border-color: #4f6ef7;
+      background: #171b2e;
+    }
+    #upload-zone .upload-icon { font-size: 28px; margin-bottom: 12px; color: #2e3348; }
+    #upload-zone .upload-text { font-size: 13px; color: #5a6078; margin-bottom: 6px; }
+    #upload-zone .upload-sub { font-size: 11px; color: #3a3f55; }
+    #upload-zone .upload-icon.success { color: #2fc87a; font-size: 22px; margin-bottom: 10px; }
+    #upload-zone .upload-text.success { color: #2fc87a; font-size: 12px; margin-bottom: 4px; }
+
+    /* Loading / Error */
+    #loading { display: none; text-align: center; padding: 32px; color: #4f6ef7; font-size: 13px; }
+    #error-box {
+      display: none; margin-top: 16px; padding: 12px 16px;
+      background: #1e0e0e; border: 1px solid #4a1a1a;
+      border-radius: 4px; color: #f76f6f; font-size: 12px;
+    }
+
+    /* Results section */
+    #results { display: none; margin-top: 28px; }
+
+    /* Info cards */
+    #info-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .info-card {
+      background: #13161f; border: 1px solid #1e2130;
+      border-radius: 4px; padding: 14px 18px;
+    }
+    .info-card .label {
+      font-size: 10px; color: #4a506a;
+      letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px;
+    }
+    .info-card .value { font-size: 14px; color: #d0d6e8; font-weight: 500; }
+    .info-card .value.highlight { color: #4f6ef7; }
+
+    /* Action bar */
+    #action-bar {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 16px;
+    }
+    #action-buttons { display: flex; gap: 10px; }
+
+    /* Buttons */
+    .export-btn {
+      background: #4f6ef7; color: #fff; border: none;
+      padding: 10px 24px; border-radius: 3px; cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+      letter-spacing: 0.06em; transition: background 0.15s;
+    }
+    .export-btn:hover { background: #3a59e8; }
+    .clear-btn {
+      background: transparent; color: #f76f6f;
+      border: 1px solid #4a1a1a; padding: 10px 20px;
+      border-radius: 3px; cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+      letter-spacing: 0.06em; transition: all 0.15s;
+    }
+    .clear-btn:hover { background: #1e0e0e; border-color: #f76f6f; }
+
+    /* Table */
+    #table-wrap {
+      background: #0d0f18; border: 1px solid #1e2130;
+      border-radius: 4px; max-height: 480px; overflow: auto;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead th {
+      background: #161922; color: #8892b0;
+      padding: 10px 14px; text-align: left;
+      font-size: 10px; letter-spacing: 0.1em;
+      text-transform: uppercase; border-bottom: 1px solid #232738;
+      white-space: nowrap; position: sticky; top: 0; z-index: 1;
+    }
+    tbody tr { border-bottom: 1px solid #1a1d27; }
+    tbody tr:hover { background: #13161f; }
+    tbody td {
+      padding: 9px 14px; color: #d0d6e8;
+      vertical-align: middle;
+      font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    }
+    tfoot td {
+      padding: 10px 14px; font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px; border-top: 1px solid #232738;
+    }
+    .td-idx { color: #3a3f55; }
+    .td-code { color: #4f6ef7; font-weight: 500; white-space: nowrap; }
+    .td-desc { color: #8892b0; font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; max-width: 320px; }
+    .td-hs { color: #c792ea; white-space: nowrap; }
+    .td-num { text-align: right; color: #2fc87a; }
+    .td-price { text-align: right; color: #f7a94f; }
+    .td-unit { color: #8892b0; }
+    .td-total-label { color: #8892b0; }
+    .td-total-qty { text-align: right; color: #2fc87a; font-weight: 600; }
+    .td-total-amount { text-align: right; color: #f7a94f; font-weight: 600; }
+
+    /* Footer note */
+    #footer-note { margin-top: 12px; font-size: 11px; color: #3a3f55; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div id="app-header">
+    <div class="dot"></div>
+    <span class="header-title">INVOICE DATA PROCESSOR</span>
+    <span class="badge badge-blue">SHEET: INVOICE → Book1</span>
+    <div class="header-right">
+      <span id="header-filename"></span>
+      <button class="clear-btn" id="header-clear-btn" style="display:none" onclick="clearData()">✕ Clear Data</button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+
+    <!-- Upload zone -->
+    <div id="upload-zone"
+      onclick="document.getElementById('file-input').click()"
+      ondragover="onDragOver(event)"
+      ondragleave="onDragLeave()"
+      ondrop="onDrop(event)">
+      <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="onFileChange(event)" />
+      <div id="upload-icon" class="upload-icon">⬆</div>
+      <div id="upload-text" class="upload-text">Kéo thả hoặc click để chọn file Invoice (.xlsx)</div>
+      <div id="upload-sub" class="upload-sub">Đọc sheet: INVOICE</div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading">⟳ Đang xử lý dữ liệu...</div>
+
+    <!-- Error -->
+    <div id="error-box"></div>
+
+    <!-- Results -->
+    <div id="results">
+      <!-- Info cards -->
+      <div id="info-cards">
+        <div class="info-card"><div class="label">Invoice No.</div><div class="value" id="card-invoice-no">—</div></div>
+        <div class="info-card"><div class="label">Date</div><div class="value" id="card-date">—</div></div>
+        <div class="info-card"><div class="label">Terms</div><div class="value" id="card-terms">—</div></div>
+        <div class="info-card"><div class="label">Total Items</div><div class="value highlight" id="card-total">—</div></div>
+      </div>
+
+      <!-- Action bar -->
+      <div id="action-bar">
+        <span class="badge badge-green" id="row-count-badge"></span>
+        <div id="action-buttons">
+          <button class="clear-btn" onclick="clearData()">✕ Clear Data</button>
+          <button class="export-btn" onclick="exportToExcel()">↓ Xuất file Excel (Book1 format)</button>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div id="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Item No.</th>
+              <th>Mô tả</th>
+              <th>HS Code</th>
+              <th style="text-align:right">SL 1</th>
+              <th>ĐVT 1</th>
+              <th style="text-align:right">SL 2</th>
+              <th>ĐVT 2</th>
+              <th style="text-align:right">Đơn giá</th>
+              <th style="text-align:right">Thành tiền</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" class="td-total-label">Tổng cộng</td>
+              <td class="td-total-qty" id="total-qty"></td>
+              <td colspan="3"></td>
+              <td></td>
+              <td class="td-total-amount" id="total-amount"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div id="footer-note">* HS Code được đọc từ giá trị cached trong file Excel. Nếu hiển thị "—", file chưa được tính toán hoặc VLOOKUP chưa được lưu giá trị.</div>
+    </div>
+  </div>
+
+<script>
+  let currentData = null;
+  let currentFileName = "";
+
+  // ── Drag & Drop ──────────────────────────────────────────────
+  function onDragOver(e) {
+    e.preventDefault();
+    document.getElementById("upload-zone").classList.add("drag-over");
+  }
+  function onDragLeave() {
+    document.getElementById("upload-zone").classList.remove("drag-over");
+  }
+  function onDrop(e) {
+    e.preventDefault();
+    document.getElementById("upload-zone").classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  }
+  function onFileChange(e) {
+    const file = e.target.files[0];
+    if (file) processFile(file);
+  }
+
+  // ── Clear ─────────────────────────────────────────────────────
+  function clearData() {
+    currentData = null;
+    currentFileName = "";
+    document.getElementById("file-input").value = "";
+    document.getElementById("results").style.display = "none";
+    document.getElementById("error-box").style.display = "none";
+    document.getElementById("header-filename").style.display = "none";
+    document.getElementById("header-clear-btn").style.display = "none";
+    // Reset upload zone
+    document.getElementById("upload-icon").className = "upload-icon";
+    document.getElementById("upload-icon").textContent = "⬆";
+    document.getElementById("upload-text").className = "upload-text";
+    document.getElementById("upload-text").textContent = "Kéo thả hoặc click để chọn file Invoice (.xlsx)";
+    document.getElementById("upload-sub").textContent = "Đọc sheet: INVOICE";
+  }
+
+  // ── Format number ─────────────────────────────────────────────
+  function fmt(n) {
+    if (n === "" || n === null || n === undefined) return "-";
+    return Number(n).toLocaleString("vi-VN");
+  }
+
+  // ── Parse ─────────────────────────────────────────────────────
+  function parseInvoiceSheet(wb) {
+    const sheetName = Object.keys(wb.Sheets).find(
+      s => s.trim().toUpperCase() === "INVOICE"
+    );
+    if (!sheetName) {
+      const available = Object.keys(wb.Sheets).join(", ");
+      throw new Error("Không tìm thấy sheet 'INVOICE' trong file. Các sheet hiện có: " + available);
+    }
+    const ws = wb.Sheets[sheetName];
+
+    const getCell = addr => {
+      const cell = ws[addr];
+      return cell ? (cell.v !== undefined ? cell.v : "") : "";
+    };
+
+    const invoiceNo = getCell("G6");
+    const shipper = getCell("B7");
+    const consignee = getCell("B13");
+    const termsOfDelivery = getCell("G24");
+
+    // Auto-detect date on row 8
+    let invoiceDate = "";
+    const wsRange = XLSX.utils.decode_range(ws["!ref"]);
+    for (let c = 0; c <= wsRange.e.c; c++) {
+      const cell = ws[XLSX.utils.encode_cell({ r: 7, c })];
+      if (!cell || !cell.v) continue;
+      const v = cell.v;
+      if (typeof v === "string" && /^\d{4}[.\-\/]\d{2}[.\-\/]\d{2}$/.test(v.trim())) {
+        invoiceDate = v.trim(); break;
+      }
+      if (v instanceof Date || (typeof v === "number" && v > 40000 && v < 60000)) {
+        const d = v instanceof Date ? v : new Date(Math.round((v - 25569) * 86400 * 1000));
+        invoiceDate = d.toISOString().slice(0, 10).replace(/-/g, "."); break;
+      }
+    }
+
+    const range = XLSX.utils.decode_range(ws["!ref"]);
+
+    // Auto-detect data start row
+    let dataStartRow = 30;
+    for (let r = 20; r <= 40; r++) {
+      const cell = ws[XLSX.utils.encode_cell({ r, c: 2 })];
+      if (cell && cell.v && /^[A-Z]{2}\d{2}-/.test(String(cell.v).trim())) {
+        dataStartRow = r; break;
+      }
+    }
+
+    // Auto-detect columns
+    let hsCodeCol = -1, dapUpriceCol = -1, dapAmountCol = -1;
+    for (let r = 20; r < dataStartRow; r++) {
+      for (let c = 0; c <= range.e.c; c++) {
+        const cell = ws[XLSX.utils.encode_cell({ r, c })];
+        if (!cell || !cell.v) continue;
+        const val = String(cell.v).toLowerCase();
+        if (val.includes("hscode")) hsCodeCol = c;
+        if (val.includes("dap value") || val === "dap") {
+          const nextRow = ws[XLSX.utils.encode_cell({ r: r + 1, c })];
+          if (nextRow && nextRow.v && String(nextRow.v).toLowerCase().includes("u/price")) {
+            dapUpriceCol = c;
+            dapAmountCol = c + 1;
+          }
+        }
+      }
+    }
+
+    const items = [];
+    for (let r = dataStartRow; r <= range.e.r; r++) {
+      const rowVal = col => {
+        const cell = ws[XLSX.utils.encode_cell({ r, c: col })];
+        return cell ? (cell.v !== undefined ? cell.v : "") : "";
+      };
+      const itemCode = rowVal(2);
+      const description = rowVal(3);
+      const qty = rowVal(4);
+      const unit = rowVal(5);
+      const unitPriceCol = dapUpriceCol !== -1 ? dapUpriceCol : 6;
+      const unitPrice = rowVal(unitPriceCol);
+
+      if (itemCode && String(itemCode).trim() !== "") {
+        const amount = dapAmountCol !== -1
+          ? rowVal(dapAmountCol) || (typeof qty === "number" && typeof unitPrice === "number" ? qty * unitPrice : "")
+          : (typeof qty === "number" && typeof unitPrice === "number" ? qty * unitPrice : "");
+        const hsCode = hsCodeCol !== -1 ? rowVal(hsCodeCol) : "";
+        const fullDesc = itemCode + " - " + description + ". Dùng cho màn hình dẹt, hàng mới 100%";
+        items.push({
+          item_code: String(itemCode).trim(),
+          description: String(description).trim(),
+          full_description: fullDesc,
+          hs_code: hsCode ? String(hsCode) : "",
+          qty1: qty, unit1: unit || "PCE",
+          qty2: qty, unit2: unit || "PCE",
+          unit_price: unitPrice, amount
+        });
+      }
+    }
+
+    return { header: { invoiceNo, invoiceDate, shipper, consignee, termsOfDelivery }, items };
+  }
+
+  // ── Process file ──────────────────────────────────────────────
+  function processFile(file) {
+    currentFileName = file.name;
+    document.getElementById("error-box").style.display = "none";
+    document.getElementById("results").style.display = "none";
+    document.getElementById("loading").style.display = "block";
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+        currentData = parseInvoiceSheet(wb);
+        renderResults(currentData);
+      } catch (err) {
+        const box = document.getElementById("error-box");
+        box.textContent = "✕ " + err.message;
+        box.style.display = "block";
+      } finally {
+        document.getElementById("loading").style.display = "none";
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ── Render ────────────────────────────────────────────────────
+  function renderResults(data) {
+    // Header cards
+    document.getElementById("card-invoice-no").textContent = data.header.invoiceNo || "—";
+    document.getElementById("card-date").textContent = data.header.invoiceDate || "—";
+    document.getElementById("card-terms").textContent = data.header.termsOfDelivery || "—";
+    document.getElementById("card-total").textContent = data.items.length;
+    document.getElementById("row-count-badge").textContent = data.items.length + " dòng dữ liệu";
+
+    // Upload zone update
+    document.getElementById("upload-icon").className = "upload-icon success";
+    document.getElementById("upload-icon").textContent = "✓";
+    document.getElementById("upload-text").className = "upload-text success";
+    document.getElementById("upload-text").textContent = currentFileName;
+    document.getElementById("upload-sub").textContent = "Click để import file invoice khác";
+
+    // Header bar
+    document.getElementById("header-filename").textContent = "📄 " + currentFileName;
+    document.getElementById("header-filename").style.display = "inline";
+    document.getElementById("header-clear-btn").style.display = "inline-block";
+
+    // Build table rows
+    let html = "";
+    let totalQty = 0, totalAmount = 0;
+    data.items.forEach((item, i) => {
+      totalQty += Number(item.qty1) || 0;
+      totalAmount += Number(item.amount) || 0;
+      html += `<tr>
+        <td class="td-idx">${i + 1}</td>
+        <td class="td-code">${item.item_code}</td>
+        <td class="td-desc">${item.description}</td>
+        <td class="td-hs">${item.hs_code || "—"}</td>
+        <td class="td-num">${fmt(item.qty1)}</td>
+        <td class="td-unit">${item.unit1}</td>
+        <td class="td-num">${fmt(item.qty2)}</td>
+        <td class="td-unit">${item.unit2}</td>
+        <td class="td-price">${fmt(item.unit_price)}</td>
+        <td class="td-price">${fmt(item.amount)}</td>
+      </tr>`;
+    });
+    document.getElementById("table-body").innerHTML = html;
+    document.getElementById("total-qty").textContent = fmt(totalQty);
+    document.getElementById("total-amount").textContent = fmt(totalAmount);
+
+    document.getElementById("results").style.display = "block";
+  }
+
+  // ── Export ────────────────────────────────────────────────────
+  function exportToExcel() {
+    if (!currentData) return;
+    const wb = XLSX.utils.book_new();
+    const rows = [
+      [null, null, null, "hs code", null, null, null, null, null, null],
+      ...currentData.items.map(item => [
+        null, item.item_code, item.full_description,
+        item.hs_code || null,
+        item.qty1, item.unit1,
+        item.qty2, item.unit2,
+        item.unit_price, item.amount
+      ])
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [
+      { wch: 4 }, { wch: 16 }, { wch: 80 }, { wch: 12 },
+      { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 8 },
+      { wch: 14 }, { wch: 16 }
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    XLSX.writeFile(wb, "output_" + (currentData.header.invoiceNo || "invoice") + ".xlsx");
+  }
+</script>
+</body>
+</html>
