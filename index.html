@@ -3,479 +3,1070 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Invoice Data Processor</title>
+  <title>XNK Tools — Invoice & Biểu Thuế 2026</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'IBM Plex Mono', monospace; min-height: 100vh; background: #0f1117; color: #e8e8e8; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #1a1d27; }
-    ::-webkit-scrollbar-thumb { background: #3a3f55; border-radius: 3px; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#0b0d14; --bg2:#10121c; --bg3:#14172a; --bg4:#0e1020;
+      --border:#1c2035; --border2:#252a45;
+      --blue:#4f6ef7; --blue-dim:#1a2340;
+      --green:#2fc87a; --green-dim:#0c2218;
+      --amber:#f7a94f; --amber-dim:#2a1a06;
+      --purple:#a78bfa; --purple-dim:#1e1440;
+      --red:#f76f6f; --red-dim:#1e0e0e;
+      --text:#d0d6e8; --text2:#8892b0; --text3:#4a506a; --text4:#2c3050;
+    }
+    body { font-family:'IBM Plex Mono',monospace; min-height:100vh; background:var(--bg); color:var(--text); }
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-track{background:var(--bg2)}
+    ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
-    /* Header */
-    #app-header {
-      border-bottom: 1px solid #1e2130;
-      padding: 20px 32px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
+    /* NAV */
+    #nav {
+      display:flex; align-items:stretch; border-bottom:1px solid var(--border);
+      background:var(--bg2); padding:0 24px; position:sticky; top:0; z-index:100;
     }
-    .dot { width: 8px; height: 8px; background: #4f6ef7; border-radius: 50%; flex-shrink: 0; }
-    .header-title { font-size: 13px; color: #8892b0; letter-spacing: 0.12em; }
-    .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-    #header-filename { font-size: 11px; color: #4a506a; display: none; }
+    .nav-logo {
+      font-size:11px; letter-spacing:.15em; color:var(--text3);
+      padding:0 20px 0 0; margin-right:12px; border-right:1px solid var(--border);
+      display:flex; align-items:center; gap:8px;
+    }
+    .nav-logo b { color:var(--blue); font-size:13px; }
+    .tab {
+      padding:16px 18px; font-size:11px; letter-spacing:.08em; color:var(--text3);
+      cursor:pointer; border-bottom:2px solid transparent; transition:all .15s;
+      white-space:nowrap; display:flex; align-items:center; gap:6px;
+      background:none; border-top:none; border-left:none; border-right:none; font-family:inherit;
+    }
+    .tab:hover{color:var(--text2)}
+    .tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+    .tbadge{padding:1px 7px;border-radius:2px;font-size:9px;font-weight:700;background:var(--blue-dim);color:var(--blue)}
+    .tbadge.g{background:var(--green-dim);color:var(--green)}
 
-    /* Badges */
-    .badge {
-      display: inline-block; padding: 2px 8px; border-radius: 2px;
-      font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    /* STEP BAR */
+    #step-bar {
+      display:flex; align-items:center; border-bottom:1px solid var(--border);
+      background:var(--bg2); padding:0 24px;
     }
-    .badge-blue { background: #1a2340; color: #4f6ef7; border: 1px solid #2e3d6e; }
-    .badge-green { background: #0e2018; color: #2fc87a; border: 1px solid #1e4030; }
+    .step { display:flex; align-items:center; gap:10px; padding:13px 20px 13px 0; margin-right:20px; border-right:1px solid var(--border); }
+    .step:last-child{border-right:none;margin-right:0}
+    .step-num {
+      width:22px; height:22px; border-radius:50%; border:1.5px solid var(--border2);
+      display:flex; align-items:center; justify-content:center;
+      font-size:10px; color:var(--text3); flex-shrink:0; font-weight:700; transition:all .2s;
+    }
+    .step-num.done{background:var(--green);border-color:var(--green);color:#fff}
+    .step-num.active{border-color:var(--blue);color:var(--blue)}
+    .step-lbl{font-size:9px;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;margin-bottom:2px}
+    .step-val{font-size:11px;color:var(--text4)}
+    .step-val.ok{color:var(--green)}
+    .step-val.go{color:var(--text2)}
 
-    /* Main content */
-    #main { padding: 32px; }
+    /* PANELS */
+    .panel{display:none;padding:24px;max-width:1400px;margin:0 auto}
+    .panel.active{display:block}
 
-    /* Upload zone */
-    #upload-zone {
-      border: 1.5px dashed #2e3348;
-      border-radius: 4px;
-      padding: 48px 32px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      background: #13161f;
+    /* UPLOAD ZONE */
+    .uz {
+      border:1.5px dashed var(--border2); border-radius:6px;
+      padding:28px 20px; text-align:center; cursor:pointer;
+      transition:all .2s; background:var(--bg3);
     }
-    #upload-zone:hover, #upload-zone.drag-over {
-      border-color: #4f6ef7;
-      background: #171b2e;
-    }
-    #upload-zone .upload-icon { font-size: 28px; margin-bottom: 12px; color: #2e3348; }
-    #upload-zone .upload-text { font-size: 13px; color: #5a6078; margin-bottom: 6px; }
-    #upload-zone .upload-sub { font-size: 11px; color: #3a3f55; }
-    #upload-zone .upload-icon.success { color: #2fc87a; font-size: 22px; margin-bottom: 10px; }
-    #upload-zone .upload-text.success { color: #2fc87a; font-size: 12px; margin-bottom: 4px; }
+    .uz:hover,.uz.drag{border-color:var(--blue);background:#131729}
+    .uz-icon{font-size:20px;margin-bottom:7px;display:block}
+    .uz-title{font-size:12px;color:var(--text2);margin-bottom:3px}
+    .uz-sub{font-size:10px;color:var(--text3)}
+    .uz.done .uz-title{color:var(--green)}
+    .uz.err .uz-title{color:var(--red)}
+    .loading-bar{height:2px;background:linear-gradient(90deg,var(--blue),var(--purple));border-radius:2px;animation:lbar 1s infinite;margin-top:10px}
+    @keyframes lbar{0%{transform:scaleX(0);transform-origin:left}50%{transform:scaleX(1);transform-origin:left}51%{transform-origin:right}100%{transform:scaleX(0);transform-origin:right}}
 
-    /* Loading / Error */
-    #loading { display: none; text-align: center; padding: 32px; color: #4f6ef7; font-size: 13px; }
-    #error-box {
-      display: none; margin-top: 16px; padding: 12px 16px;
-      background: #1e0e0e; border: 1px solid #4a1a1a;
-      border-radius: 4px; color: #f76f6f; font-size: 12px;
-    }
+    /* CARDS */
+    .card-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+    .card{background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:11px 15px}
+    .card-lbl{font-size:9px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+    .card-val{font-size:14px;font-weight:600}
+    .cv-blue{color:var(--blue)}.cv-green{color:var(--green)}.cv-amber{color:var(--amber)}
 
-    /* Results section */
-    #results { display: none; margin-top: 28px; }
+    /* BADGES */
+    .badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:3px;font-size:10px;letter-spacing:.05em}
+    .b-blue{background:var(--blue-dim);color:var(--blue);border:1px solid #2e3d6e}
+    .b-green{background:var(--green-dim);color:var(--green);border:1px solid #1a3d28}
+    .b-amber{background:var(--amber-dim);color:var(--amber);border:1px solid #3a2506}
+    .b-purple{background:var(--purple-dim);color:var(--purple);border:1px solid #2a1a60}
+    .b-red{background:var(--red-dim);color:var(--red);border:1px solid #4a1a1a}
 
-    /* Info cards */
-    #info-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    .info-card {
-      background: #13161f; border: 1px solid #1e2130;
-      border-radius: 4px; padding: 14px 18px;
-    }
-    .info-card .label {
-      font-size: 10px; color: #4a506a;
-      letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px;
-    }
-    .info-card .value { font-size: 14px; color: #d0d6e8; font-weight: 500; }
-    .info-card .value.highlight { color: #4f6ef7; }
+    /* BUTTONS */
+    .btn{padding:7px 14px;border-radius:3px;cursor:pointer;font-size:11px;font-family:'IBM Plex Mono',monospace;letter-spacing:.05em;transition:all .15s;border:none}
+    .btn-primary{background:var(--blue);color:#fff}
+    .btn-primary:hover{background:#3a59e8}
+    .btn-danger{background:transparent;color:var(--red);border:1px solid #4a1a1a}
+    .btn-danger:hover{background:var(--red-dim)}
+    .btn-outline{background:transparent;color:var(--text2);border:1px solid var(--border2)}
+    .btn-outline:hover{background:var(--bg3);color:var(--text)}
 
-    /* Action bar */
-    #action-bar {
-      display: flex; justify-content: space-between;
-      align-items: center; margin-bottom: 16px;
-    }
-    #action-buttons { display: flex; gap: 10px; }
+    /* ACTION BAR */
+    .action-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;gap:10px;flex-wrap:wrap}
+    .action-btns{display:flex;gap:7px;flex-wrap:wrap}
 
-    /* Buttons */
-    .export-btn {
-      background: #4f6ef7; color: #fff; border: none;
-      padding: 10px 24px; border-radius: 3px; cursor: pointer;
-      font-family: 'IBM Plex Mono', monospace; font-size: 12px;
-      letter-spacing: 0.06em; transition: background 0.15s;
+    /* TABLE */
+    .table-wrap{background:var(--bg);border:1px solid var(--border);border-radius:5px;overflow:auto;max-height:520px}
+    table{width:100%;border-collapse:collapse;font-size:11px}
+    thead th{
+      background:var(--bg4);color:var(--text3);padding:9px 10px;
+      text-align:left;font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+      border-bottom:1px solid var(--border);white-space:nowrap;
+      position:sticky;top:0;z-index:2;font-weight:600;
     }
-    .export-btn:hover { background: #3a59e8; }
-    .clear-btn {
-      background: transparent; color: #f76f6f;
-      border: 1px solid #4a1a1a; padding: 10px 20px;
-      border-radius: 3px; cursor: pointer;
-      font-family: 'IBM Plex Mono', monospace; font-size: 12px;
-      letter-spacing: 0.06em; transition: all 0.15s;
-    }
-    .clear-btn:hover { background: #1e0e0e; border-color: #f76f6f; }
+    tbody tr{border-bottom:1px solid #12141e;transition:background .1s}
+    tbody tr:hover{background:var(--bg3)}
+    tbody td{padding:7px 10px;vertical-align:middle}
+    tfoot td{padding:8px 10px;border-top:1px solid var(--border)}
+    .td-idx{color:var(--text4);width:28px}
+    .td-code{color:var(--blue);font-weight:600;white-space:nowrap}
+    .td-desc{color:var(--text2);font-family:'Be Vietnam Pro',sans-serif;font-size:12px;max-width:250px}
+    .td-num{text-align:right;color:var(--green)}
+    .td-price{text-align:right;color:var(--amber)}
+    .td-unit{color:var(--text3)}
+    .td-rate{text-align:center}
+    .rc{display:inline-block;padding:2px 6px;border-radius:2px;font-size:10px;font-weight:600;white-space:nowrap}
+    .rc-0{background:var(--green-dim);color:var(--green)}
+    .rc-low{background:#0e1e30;color:#4fc3f7}
+    .rc-mid{background:var(--amber-dim);color:var(--amber)}
+    .rc-high{background:#1e1206;color:#ff7043}
+    .rc-star{background:var(--purple-dim);color:var(--purple)}
+    .hs-link{color:var(--purple);cursor:pointer;text-decoration:underline dotted;transition:color .15s}
+    .hs-link:hover{color:#c4b5fd}
 
-    /* Table */
-    #table-wrap {
-      background: #0d0f18; border: 1px solid #1e2130;
-      border-radius: 4px; max-height: 480px; overflow: auto;
+    /* TARIFF TAB */
+    #t-search-wrap{display:flex;gap:10px;margin-bottom:18px;align-items:center}
+    #t-input{
+      flex:1;background:var(--bg2);border:1.5px solid var(--border2);border-radius:5px;
+      padding:11px 16px;font-size:16px;color:var(--text);
+      font-family:'IBM Plex Mono',monospace;outline:none;transition:border-color .2s;
     }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    thead th {
-      background: #161922; color: #8892b0;
-      padding: 10px 14px; text-align: left;
-      font-size: 10px; letter-spacing: 0.1em;
-      text-transform: uppercase; border-bottom: 1px solid #232738;
-      white-space: nowrap; position: sticky; top: 0; z-index: 1;
-    }
-    tbody tr { border-bottom: 1px solid #1a1d27; }
-    tbody tr:hover { background: #13161f; }
-    tbody td {
-      padding: 9px 14px; color: #d0d6e8;
-      vertical-align: middle;
-      font-family: 'IBM Plex Mono', monospace; font-size: 11px;
-    }
-    tfoot td {
-      padding: 10px 14px; font-family: 'IBM Plex Mono', monospace;
-      font-size: 11px; border-top: 1px solid #232738;
-    }
-    .td-idx { color: #3a3f55; }
-    .td-code { color: #4f6ef7; font-weight: 500; white-space: nowrap; }
-    .td-desc { color: #8892b0; font-family: 'IBM Plex Sans', sans-serif; font-size: 12px; max-width: 320px; }
-    .td-hs { color: #c792ea; white-space: nowrap; }
-    .td-num { text-align: right; color: #2fc87a; }
-    .td-price { text-align: right; color: #f7a94f; }
-    .td-unit { color: #8892b0; }
-    .td-total-label { color: #8892b0; }
-    .td-total-qty { text-align: right; color: #2fc87a; font-weight: 600; }
-    .td-total-amount { text-align: right; color: #f7a94f; font-weight: 600; }
+    #t-input:focus{border-color:var(--blue)}
+    #t-input::placeholder{color:var(--text4)}
 
-    /* Footer note */
-    #footer-note { margin-top: 12px; font-size: 11px; color: #3a3f55; }
+    .hs-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+    .hs-pill{
+      padding:4px 12px;border-radius:99px;background:var(--blue-dim);
+      color:var(--blue);border:1px solid #2e3d6e;font-size:11px;
+      cursor:pointer;transition:all .15s;font-family:'IBM Plex Mono',monospace;
+    }
+    .hs-pill:hover,.hs-pill.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+    .t-layout{display:grid;grid-template-columns:280px 1fr;gap:16px}
+    .t-list-wrap{max-height:640px;overflow-y:auto}
+    .t-item{background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:9px 13px;cursor:pointer;margin-bottom:5px;transition:all .15s}
+    .t-item:hover{border-color:var(--border2);background:var(--bg3)}
+    .t-item.active{border-color:var(--blue);background:#11183a}
+    .t-item-code{font-size:12px;font-weight:700;color:var(--blue);margin-bottom:2px}
+    .t-item-name{font-size:11px;color:var(--text2);line-height:1.4;font-family:'Be Vietnam Pro',sans-serif}
+    .t-item-name.parent{color:var(--text3);font-style:italic}
+
+    .detail-panel{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:20px;overflow-y:auto;max-height:640px}
+    .d-header{display:flex;gap:14px;margin-bottom:18px;align-items:flex-start}
+    .d-code{background:linear-gradient(135deg,#3b52e8,#7c3aed);border-radius:6px;padding:9px 14px;font-size:18px;font-weight:700;letter-spacing:2px;flex-shrink:0}
+    .d-viet{font-family:'Be Vietnam Pro',sans-serif;font-size:14px;font-weight:600;margin-bottom:4px;line-height:1.5}
+    .d-eng{font-size:11px;color:var(--text3);font-style:italic;line-height:1.4}
+    .sec-hdr{font-size:9px;letter-spacing:.15em;color:var(--blue);text-transform:uppercase;font-weight:700;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+    .d-section{margin-bottom:16px}
+    .r-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:7px}
+    .r-box{background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:8px 10px}
+    .r-box.has{border-color:#1c2a40}
+    .r-lbl{font-size:9px;color:var(--text3);letter-spacing:.06em;margin-bottom:3px}
+    .r-val{font-size:13px;font-weight:600}
+    .rv-green{color:var(--green)}.rv-amber{color:var(--amber)}.rv-blue{color:var(--blue)}
+    .rv-purple{color:var(--purple)}.rv-dim{color:var(--text4);font-size:11px}
+    .policy-box{background:var(--bg4);border:1px solid #1e2540;border-radius:5px;padding:11px 13px}
+    .policy-box p{font-size:11px;color:var(--text2);line-height:1.7;font-family:'Be Vietnam Pro',sans-serif}
+
+    /* UNIT COMPARE */
+    .unit-cmp{display:flex;flex-direction:column;gap:3px;min-width:130px}
+    .unit-badges{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+    .utag{padding:1px 7px;border-radius:2px;font-size:10px;font-weight:600;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+    .utag-inv{background:#1a2340;color:#7fa8f7;border:1px solid #2e3d6e}
+    .utag-bt{background:#0e2218;color:#6ad88a;border:1px solid #1e4030}
+    .utag-diff{background:#2a1a06;color:#f7c94f;border:1px solid #3a2506}
+    .ustatus{font-size:9px;font-weight:700;letter-spacing:.04em}
+    .us-ok{color:var(--green)}.us-eq{color:var(--amber)}.us-diff{color:var(--red)}
+    .unit-sel{
+      background:var(--bg3);border:1px solid var(--border2);border-radius:3px;
+      color:var(--text);font-size:10px;font-family:'IBM Plex Mono',monospace;
+      padding:2px 5px;cursor:pointer;outline:none;width:100%;margin-top:2px;
+    }
+    .unit-sel:focus{border-color:var(--blue)}
+    .unit-sel.changed{border-color:var(--amber)!important;color:var(--amber)}
+    .td-ucmp{vertical-align:top;padding-top:8px!important}
+
+    /* EMPTY / ERR */
+    .empty{text-align:center;padding:52px 24px;color:var(--text4)}
+    .empty-icon{font-size:30px;margin-bottom:9px}
+    .empty-title{font-size:13px;color:var(--text3);margin-bottom:5px}
+    .empty-sub{font-size:11px}
+    .err-box{padding:10px 14px;background:var(--red-dim);border:1px solid #4a1a1a;border-radius:4px;color:var(--red);font-size:11px;margin-top:8px}
+    .note-sm{font-size:10px;color:var(--text3);margin-top:7px}
   </style>
 </head>
 <body>
 
-  <!-- Header -->
-  <div id="app-header">
-    <div class="dot"></div>
-    <span class="header-title">INVOICE DATA PROCESSOR</span>
-    <span class="badge badge-blue">SHEET: INVOICE → Book1</span>
-    <div class="header-right">
-      <span id="header-filename"></span>
-      <button class="clear-btn" id="header-clear-btn" style="display:none" onclick="clearData()">✕ Clear Data</button>
+<!-- NAV -->
+<nav id="nav">
+  <div class="nav-logo"><b>⬡</b> XNK TOOLS 2026</div>
+  <button class="tab active" onclick="switchTab('invoice')">
+    📄 XỬ LÝ INVOICE
+    <span class="tbadge" id="tb-inv" style="display:none"></span>
+  </button>
+  <button class="tab" onclick="switchTab('tariff')">
+    🔍 TRA BIỂU THUẾ
+    <span class="tbadge g" id="tb-tar" style="display:none"></span>
+  </button>
+</nav>
+
+<!-- STEP BAR (Tab 1 only) -->
+<div id="step-bar">
+  <div class="step">
+    <div class="step-num" id="sn1">1</div>
+    <div><div class="step-lbl">Biểu Thuế XNK 2026</div><div class="step-val" id="sv1">Chưa tải</div></div>
+  </div>
+  <div class="step">
+    <div class="step-num" id="sn2">2</div>
+    <div><div class="step-lbl">File Invoice</div><div class="step-val" id="sv2">Chưa tải</div></div>
+  </div>
+  <div class="step">
+    <div class="step-num" id="sn3">3</div>
+    <div><div class="step-lbl">Kết quả tổng hợp</div><div class="step-val" id="sv3">Đang chờ</div></div>
+  </div>
+</div>
+
+<!-- ════ TAB 1: INVOICE ════ -->
+<div class="panel active" id="panel-invoice">
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+    <!-- Bước 1: Biểu Thuế -->
+    <div>
+      <div style="font-size:9px;letter-spacing:.12em;color:var(--text3);text-transform:uppercase;margin-bottom:7px">BƯỚC 1 — BIỂU THUẾ XNK 2026</div>
+      <div class="uz" id="uz-t" onclick="document.getElementById('f-t').click()"
+        ondragover="dzOver(event,'uz-t')" ondragleave="dzOut('uz-t')" ondrop="dzDrop(event,'t')">
+        <input type="file" id="f-t" accept=".xlsx,.xls" style="display:none" onchange="handleTariff(event)">
+        <span class="uz-icon" id="uzi-t">📊</span>
+        <div class="uz-title" id="uzt-t">Kéo thả file Biểu Thuế (.xlsx)</div>
+        <div class="uz-sub">Sheet BT2026 — ~15,000 mã hàng</div>
+        <div id="uzbar-t" style="display:none"><div class="loading-bar"></div></div>
+      </div>
+      <div id="err-t" class="err-box" style="display:none"></div>
+    </div>
+    <!-- Bước 2: Invoice -->
+    <div>
+      <div style="font-size:9px;letter-spacing:.12em;color:var(--text3);text-transform:uppercase;margin-bottom:7px">BƯỚC 2 — FILE INVOICE</div>
+      <div class="uz" id="uz-i" onclick="document.getElementById('f-i').click()"
+        ondragover="dzOver(event,'uz-i')" ondragleave="dzOut('uz-i')" ondrop="dzDrop(event,'i')">
+        <input type="file" id="f-i" accept=".xlsx,.xls" style="display:none" onchange="handleInvoice(event)">
+        <span class="uz-icon" id="uzi-i">📄</span>
+        <div class="uz-title" id="uzt-i">Kéo thả file Invoice (.xlsx)</div>
+        <div class="uz-sub" id="uzs-i">Sheet: INVOICE — HS Code tự động tra biểu thuế</div>
+        <div id="uzbar-i" style="display:none"><div class="loading-bar"></div></div>
+      </div>
+      <div id="err-i" class="err-box" style="display:none"></div>
     </div>
   </div>
 
-  <!-- Main -->
-  <div id="main">
-
-    <!-- Upload zone -->
-    <div id="upload-zone"
-      onclick="document.getElementById('file-input').click()"
-      ondragover="onDragOver(event)"
-      ondragleave="onDragLeave()"
-      ondrop="onDrop(event)">
-      <input type="file" id="file-input" accept=".xlsx,.xls" style="display:none" onchange="onFileChange(event)" />
-      <div id="upload-icon" class="upload-icon">⬆</div>
-      <div id="upload-text" class="upload-text">Kéo thả hoặc click để chọn file Invoice (.xlsx)</div>
-      <div id="upload-sub" class="upload-sub">Đọc sheet: INVOICE</div>
+  <!-- Results -->
+  <div id="inv-results" style="display:none">
+    <div class="card-row">
+      <div class="card"><div class="card-lbl">Invoice No.</div><div class="card-val cv-blue" id="ci-no">—</div></div>
+      <div class="card"><div class="card-lbl">Date</div><div class="card-val" id="ci-date">—</div></div>
+      <div class="card"><div class="card-lbl">Terms</div><div class="card-val" id="ci-terms">—</div></div>
+      <div class="card"><div class="card-lbl">Số dòng</div><div class="card-val cv-green" id="ci-rows">—</div></div>
+      <div class="card"><div class="card-lbl">Tổng tiền</div><div class="card-val cv-amber" id="ci-amt">—</div></div>
+      <div class="card"><div class="card-lbl">Khớp biểu thuế</div><div class="card-val" id="ci-match">—</div></div>
     </div>
 
-    <!-- Loading -->
-    <div id="loading">⟳ Đang xử lý dữ liệu...</div>
-
-    <!-- Error -->
-    <div id="error-box"></div>
-
-    <!-- Results -->
-    <div id="results">
-      <!-- Info cards -->
-      <div id="info-cards">
-        <div class="info-card"><div class="label">Invoice No.</div><div class="value" id="card-invoice-no">—</div></div>
-        <div class="info-card"><div class="label">Date</div><div class="value" id="card-date">—</div></div>
-        <div class="info-card"><div class="label">Terms</div><div class="value" id="card-terms">—</div></div>
-        <div class="info-card"><div class="label">Total Items</div><div class="value highlight" id="card-total">—</div></div>
+    <div class="action-bar">
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+        <span class="badge b-blue" id="bd-rows"></span>
+        <span class="badge b-green" id="bd-match" style="display:none"></span>
+        <span class="badge b-amber" id="bd-nomatch" style="display:none"></span>
       </div>
+      <div class="action-btns">
+        <button class="btn btn-danger" onclick="clearInvoice()">✕ Xóa</button>
+        <button class="btn btn-outline" onclick="exportBook1()">↓ Export Book1</button>
+        <button class="btn btn-primary" onclick="exportEnriched()">↓ Export Full + Thuế</button>
+      </div>
+    </div>
 
-      <!-- Action bar -->
-      <div id="action-bar">
-        <span class="badge badge-green" id="row-count-badge"></span>
-        <div id="action-buttons">
-          <button class="clear-btn" onclick="clearData()">✕ Clear Data</button>
-          <button class="export-btn" onclick="exportToExcel()">↓ Xuất file Excel (Book1 format)</button>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Item No.</th>
+            <th>Mô tả</th>
+            <th>HS Code</th>
+            <th style="text-align:right">SL</th>
+            <th>ĐVT</th>
+            <th style="text-align:right">Đơn giá</th>
+            <th style="text-align:right">Thành tiền</th>
+            <th title="Nhập khẩu thông thường">NK TT</th>
+            <th title="Nhập khẩu ưu đãi MFN">MFN</th>
+            <th>VAT</th>
+            <th>EVFTA</th>
+            <th>CPTPP</th>
+            <th title="ĐVT1 giữ nguyên từ Invoice · ĐVT2 có thể chọn lại theo Biểu Thuế">ĐVT1 (giữ) / ĐVT2 (chọn)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="inv-tbody"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" style="color:var(--text3)">Tổng cộng</td>
+            <td class="td-num" id="tf-qty"></td>
+            <td colspan="2"></td>
+            <td class="td-price" id="tf-amt"></td>
+            <td colspan="7"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div class="note-sm">* Click HS Code → tra chi tiết. Cột ĐVT: <b>①</b> ĐVT1 luôn giữ nguyên từ Invoice · <b>②</b> ĐVT2 có thể chọn lại · <span style="color:var(--green)">✓ Khớp</span> · <span style="color:var(--amber)">≈ Tương đương</span> · <span style="color:var(--red)">⚠ Khác</span></div>
+  </div>
+
+  <div class="empty" id="inv-empty">
+    <div class="empty-icon">📋</div>
+    <div class="empty-title">Chưa có dữ liệu Invoice</div>
+    <div class="empty-sub">Có thể tải Biểu Thuế trước hoặc sau khi tải Invoice</div>
+  </div>
+</div>
+
+
+<!-- ════ TAB 2: TRA BIỂU THUẾ ════ -->
+<div class="panel" id="panel-tariff">
+
+  <!-- Chưa có biểu thuế -->
+  <div id="t-nodata" class="empty">
+    <div class="empty-icon">📊</div>
+    <div class="empty-title">Biểu Thuế chưa được tải</div>
+    <div class="empty-sub">Quay lại tab <b>Xử Lý Invoice</b> → Bước 1 để tải file Biểu Thuế XNK 2026</div>
+  </div>
+
+  <!-- Đã có biểu thuế -->
+  <div id="t-ready" style="display:none">
+
+    <!-- HS pills từ Invoice -->
+    <div id="hs-pills-section" style="display:none;margin-bottom:14px">
+      <div style="font-size:9px;letter-spacing:.12em;color:var(--text3);text-transform:uppercase;margin-bottom:7px">
+        HS CODE TỪ INVOICE — click để tra nhanh
+      </div>
+      <div class="hs-pills" id="hs-pills"></div>
+    </div>
+
+    <!-- Search box -->
+    <div id="t-search-wrap">
+      <input id="t-input" type="text"
+        placeholder="Nhập mã HS (vd: 84713000) hoặc tên hàng hóa..."
+        oninput="doSearch(this.value)" />
+      <button class="btn btn-danger" onclick="clearSearch()">✕</button>
+    </div>
+
+    <!-- Prompt -->
+    <div id="t-prompt" class="empty">
+      <div class="empty-icon">🗂</div>
+      <div class="empty-title cv-blue" id="t-prompt-lbl">Biểu thuế sẵn sàng</div>
+      <div class="empty-sub">Nhập mã HS hoặc tên hàng để tra cứu</div>
+    </div>
+
+    <!-- Kết quả + detail -->
+    <div class="t-layout" id="t-layout" style="display:none">
+      <div>
+        <div style="font-size:9px;letter-spacing:.12em;color:var(--text3);text-transform:uppercase;margin-bottom:7px" id="t-res-lbl">KẾT QUẢ</div>
+        <div class="t-list-wrap" id="t-list"></div>
+      </div>
+      <div class="detail-panel" id="t-detail">
+        <div class="empty" style="padding:36px 0">
+          <div class="empty-icon">👈</div>
+          <div class="empty-sub">Chọn mã hàng để xem chi tiết</div>
         </div>
       </div>
-
-      <!-- Table -->
-      <div id="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Item No.</th>
-              <th>Mô tả</th>
-              <th>HS Code</th>
-              <th style="text-align:right">SL 1</th>
-              <th>ĐVT 1</th>
-              <th style="text-align:right">SL 2</th>
-              <th>ĐVT 2</th>
-              <th style="text-align:right">Đơn giá</th>
-              <th style="text-align:right">Thành tiền</th>
-            </tr>
-          </thead>
-          <tbody id="table-body"></tbody>
-          <tfoot>
-            <tr>
-              <td colspan="4" class="td-total-label">Tổng cộng</td>
-              <td class="td-total-qty" id="total-qty"></td>
-              <td colspan="3"></td>
-              <td></td>
-              <td class="td-total-amount" id="total-amount"></td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      <div id="footer-note">* HS Code được đọc từ giá trị cached trong file Excel. Nếu hiển thị "—", file chưa được tính toán hoặc VLOOKUP chưa được lưu giá trị.</div>
     </div>
   </div>
+</div>
+
 
 <script>
-  let currentData = null;
-  let currentFileName = "";
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let tariffMap = null;
+let invoiceData = null;
+let selCode = null;
+let unitOverrides = {}; // { rowIndex: selectedUnit }
 
-  // ── Drag & Drop ──────────────────────────────────────────────
-  function onDragOver(e) {
-    e.preventDefault();
-    document.getElementById("upload-zone").classList.add("drag-over");
-  }
-  function onDragLeave() {
-    document.getElementById("upload-zone").classList.remove("drag-over");
-  }
-  function onDrop(e) {
-    e.preventDefault();
-    document.getElementById("upload-zone").classList.remove("drag-over");
-    const file = e.dataTransfer.files[0];
-    if (file) processFile(file);
-  }
-  function onFileChange(e) {
-    const file = e.target.files[0];
-    if (file) processFile(file);
+// ═══════════════════════════════════════════
+// UNIT EQUIVALENCE MAP
+// Groups of equivalent units — same group = tương đương (≈)
+// ═══════════════════════════════════════════
+const UNIT_GROUPS = [
+  // Piece / chiếc / cái
+  ['pcs','pce','piece','pieces','chiếc','cái','unit','units','set','sets','bộ'],
+  // Kilogram
+  ['kg','kgs','kilogram','kilograms','kilo','kilos'],
+  // Gram
+  ['g','gr','gram','grams'],
+  // Tonne / tấn
+  ['t','tonne','ton','tons','tonnes','tấn','mt'],
+  // Litre / lít
+  ['l','lt','ltr','litre','litres','liter','liters','lít'],
+  // Millilitre
+  ['ml','millilitre','milliliter'],
+  // Metre / mét
+  ['m','metre','meter','mét'],
+  // Kilometre
+  ['km','kilometre','kilometer'],
+  // Square metre / m²
+  ['m2','sqm','sq.m','m²','square metre','square meter'],
+  // Cubic metre / m³
+  ['m3','cbm','m³','cubic metre','cubic meter'],
+  // Box / thùng
+  ['box','boxes','thùng','carton','ctn','ctns'],
+  // Roll / cuộn
+  ['roll','rolls','cuộn','rl'],
+  // Pair / đôi
+  ['pair','pairs','đôi','pr'],
+  // Dozen / tá
+  ['dozen','dz','doz','tá'],
+  // Packet / gói
+  ['packet','pack','pkt','gói'],
+  // Sheet / tờ
+  ['sheet','sheets','tờ'],
+  // Bottle / chai
+  ['bottle','bottles','chai'],
+  // Bag / túi / bao
+  ['bag','bags','túi','bao'],
+  // Can / hộp
+  ['can','cans','hộp','tin','tins'],
+  // Con (animal unit)
+  ['con','con/kg','head'],
+  // Kg/con
+  ['kg/con','kg/unit'],
+];
+
+function normalizeUnit(u) {
+  return (u||'').toLowerCase().trim().replace(/\s+/g,'');
+}
+
+// Split compound unit "kg/chiếc" → ['kg','chiếc']
+function splitUnit(u) {
+  return normalizeUnit(u).split('/').filter(Boolean);
+}
+
+function getUnitGroup(u) {
+  const n = normalizeUnit(u);
+  if (!n) return -1;
+  return UNIT_GROUPS.findIndex(g => g.some(x => normalizeUnit(x) === n));
+}
+
+// Check if unitA matches any component of unitB (handles compound units)
+// e.g. PCS vs kg/chiếc → 'chiếc' is in piece group → equiv
+function compareUnits(invUnit, btUnit) {
+  const aN = normalizeUnit(invUnit);
+  const bN = normalizeUnit(btUnit);
+  if (!aN || !bN) return 'unknown';
+  if (aN === bN) return 'exact';
+
+  // Check direct group match
+  const ga = getUnitGroup(aN), gb = getUnitGroup(bN);
+  if (ga !== -1 && ga === gb) return 'equiv';
+
+  // Handle compound BT unit (e.g. "kg/chiếc", "kg/con")
+  // If invoice unit matches ANY part of the compound BT unit → equiv
+  const bParts = splitUnit(btUnit);
+  if (bParts.length > 1) {
+    for (const part of bParts) {
+      const gPart = getUnitGroup(part);
+      if (gPart !== -1 && gPart === ga) return 'equiv'; // e.g. PCS matches 'chiếc' in 'kg/chiếc'
+      if (normalizeUnit(part) === aN) return 'equiv';   // exact match on a part
+    }
   }
 
-  // ── Clear ─────────────────────────────────────────────────────
-  function clearData() {
-    currentData = null;
-    currentFileName = "";
-    document.getElementById("file-input").value = "";
-    document.getElementById("results").style.display = "none";
-    document.getElementById("error-box").style.display = "none";
-    document.getElementById("header-filename").style.display = "none";
-    document.getElementById("header-clear-btn").style.display = "none";
-    // Reset upload zone
-    document.getElementById("upload-icon").className = "upload-icon";
-    document.getElementById("upload-icon").textContent = "⬆";
-    document.getElementById("upload-text").className = "upload-text";
-    document.getElementById("upload-text").textContent = "Kéo thả hoặc click để chọn file Invoice (.xlsx)";
-    document.getElementById("upload-sub").textContent = "Đọc sheet: INVOICE";
+  // Handle compound Invoice unit vs single BT unit
+  const aParts = splitUnit(invUnit);
+  if (aParts.length > 1) {
+    for (const part of aParts) {
+      const gPart = getUnitGroup(part);
+      if (gPart !== -1 && gPart === gb) return 'equiv';
+      if (normalizeUnit(part) === bN) return 'equiv';
+    }
   }
 
-  // ── Format number ─────────────────────────────────────────────
-  function fmt(n) {
-    if (n === "" || n === null || n === undefined) return "-";
-    return Number(n).toLocaleString("vi-VN");
-  }
+  return 'diff';
+}
 
-  // ── Parse ─────────────────────────────────────────────────────
-  function parseInvoiceSheet(wb) {
-    const sheetName = Object.keys(wb.Sheets).find(
-      s => s.trim().toUpperCase() === "INVOICE"
+// ─── MODAL ───────────────────────────────────
+// Inline confirm modal (no browser confirm() to allow custom UI)
+let _modalResolve = null;
+function showModal(msg, yesLabel='Áp dụng tất cả', noLabel='Chỉ dòng này'){
+  return new Promise(resolve=>{
+    _modalResolve=resolve;
+    document.getElementById('modal-msg').textContent=msg;
+    document.getElementById('modal-yes').textContent=yesLabel;
+    document.getElementById('modal-no').textContent=noLabel;
+    document.getElementById('modal').style.display='flex';
+  });
+}
+function modalAnswer(yes){
+  document.getElementById('modal').style.display='none';
+  if(_modalResolve){ _modalResolve(yes); _modalResolve=null; }
+}
+
+const COL = {
+  ma_hang:5, mo_ta_viet:6, mo_ta_anh:7, don_vi_tinh:8, unit_of_qty:9,
+  thue_nk_tt:10, thue_nk_uu_dai:13, vat:16,
+  acfta:19, atiga:22, ajcep:25, vjepa:28, akfta:31,
+  aanzfta:34, aifta:37, vkfta:40, vcfta:43, vn_eaeu:46,
+  cptpp:49, ahkfta:52, vncu:55, evfta:58, ukvfta:61,
+  vn_lao:64, vifta:67, rcept:70,
+  tt_db:78, xk:81, xk_cptpp:84, xk_ev:87, xk_ukv:90,
+  thue_bvmt:93, chinh_sach:96, giam_vat:97
+};
+const FTA = [
+  ['acfta','ACFTA'],['atiga','ATIGA'],['ajcep','AJCEP'],['vjepa','VJEPA'],
+  ['akfta','AKFTA'],['aanzfta','AANZFTA'],['aifta','AIFTA'],['vkfta','VKFTA'],
+  ['vcfta','VCFTA'],['vn_eaeu','VN-EAEU'],['cptpp','CPTPP'],['ahkfta','AHKFTA'],
+  ['vncu','VNCU'],['evfta','EVFTA'],['ukvfta','UKVFTA'],
+  ['vn_lao','VN-LAO'],['vifta','VIFTA'],['rcept','RCEPT']
+];
+
+// ═══════════════════════════════════════════
+// TAB
+// ═══════════════════════════════════════════
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['invoice','tariff'][i]===t));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+  document.getElementById('step-bar').style.display = t==='invoice' ? 'flex' : 'none';
+  if (t==='tariff') renderTariffTab();
+}
+
+// ═══════════════════════════════════════════
+// DRAG & DROP
+// ═══════════════════════════════════════════
+function dzOver(e,id){e.preventDefault();document.getElementById(id).classList.add('drag')}
+function dzOut(id){document.getElementById(id).classList.remove('drag')}
+function dzDrop(e,which){
+  e.preventDefault();
+  ['uz-t','uz-i'].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.remove('drag')});
+  const f=e.dataTransfer.files[0]; if(!f) return;
+  if(which==='t') loadTariff(f); else loadInvoice(f);
+}
+
+// ═══════════════════════════════════════════
+// STEPS
+// ═══════════════════════════════════════════
+function updateSteps(){
+  const s1=!!tariffMap, s2=!!invoiceData;
+  setStep(1, s1?'done':(s2?'':'active'), s1?`✓ ${tariffMap.size.toLocaleString()} mã hàng`:'Chưa tải', s1);
+  setStep(2, s2?'done':(s1?'active':''), s2?`✓ ${invoiceData.items.length} dòng`:'Chưa tải', s2);
+  setStep(3, (s1&&s2)?'done':'', (s1&&s2)?'Hoàn tất — xem bảng bên dưới':'Chờ 2 file trên', s1&&s2);
+}
+function setStep(n,cls,txt,ok){
+  const num=document.getElementById('sn'+n), val=document.getElementById('sv'+n);
+  num.className='step-num'+(cls?' '+cls:'');
+  num.textContent=cls==='done'?'✓':n;
+  val.textContent=txt;
+  val.className='step-val '+(ok?'ok':cls==='active'?'go':'');
+}
+
+// ═══════════════════════════════════════════
+// TARIFF FILE
+// ═══════════════════════════════════════════
+function handleTariff(e){const f=e.target.files[0];if(f)loadTariff(f)}
+function loadTariff(file){
+  setUZ('t','','⟳ Đang đọc biểu thuế...');
+  show('uzbar-t'); hide('err-t');
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
+      const ws=wb.Sheets['BT2026'];
+      if(!ws) throw new Error('Không tìm thấy sheet BT2026');
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+      const map=new Map();
+      for(const row of rows){
+        const code=pv(row[COL.ma_hang]);
+        if(!/^\d{4,10}$/.test(code)) continue;
+        const rec={}; for(const[k,idx] of Object.entries(COL)) rec[k]=pv(row[idx]);
+        rec.ma_hang=code; map.set(code,rec);
+      }
+      tariffMap=map;
+      hide('uzbar-t');
+      setUZ('t','done',`✓ ${file.name} — ${map.size.toLocaleString()} mã hàng`);
+      document.getElementById('tb-tar').textContent=map.size.toLocaleString();
+      document.getElementById('tb-tar').style.display='inline';
+      updateSteps();
+      if(invoiceData) renderTable(); // re-render with tariff data
+    }catch(err){
+      hide('uzbar-t'); setUZ('t','err','✕ '+err.message);
+      showErr('err-t',err.message);
+    }
+  };
+  r.readAsArrayBuffer(file);
+}
+
+// ═══════════════════════════════════════════
+// INVOICE FILE
+// ═══════════════════════════════════════════
+function handleInvoice(e){const f=e.target.files[0];if(f)loadInvoice(f)}
+function loadInvoice(file){
+  setUZ('i','','⟳ Đang đọc invoice...');
+  show('uzbar-i'); hide('err-i'); hide('inv-results'); show('inv-empty');
+  const r=new FileReader();
+  r.onload=ev=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'});
+      invoiceData=parseInvoice(wb);
+      hide('uzbar-i');
+      setUZ('i','done',`✓ ${file.name} — ${invoiceData.items.length} dòng`);
+      document.getElementById('tb-inv').textContent=invoiceData.items.length;
+      document.getElementById('tb-inv').style.display='inline';
+      updateSteps(); renderTable();
+    }catch(err){
+      hide('uzbar-i'); setUZ('i','err','✕ '+err.message);
+      showErr('err-i',err.message); show('inv-empty');
+    }
+  };
+  r.readAsArrayBuffer(file);
+}
+
+function parseInvoice(wb){
+  const sn=Object.keys(wb.Sheets).find(s=>s.trim().toUpperCase()==='INVOICE');
+  if(!sn) throw new Error("Không tìm thấy sheet 'INVOICE'. Có: "+Object.keys(wb.Sheets).join(', '));
+  const ws=wb.Sheets[sn];
+  const gc=a=>{const c=ws[a];return c?(c.v!==undefined?c.v:''):''};
+  const invoiceNo=gc('G6'), terms=gc('G24');
+  let date='';
+  const rng=XLSX.utils.decode_range(ws['!ref']);
+  for(let c=0;c<=rng.e.c;c++){
+    const cell=ws[XLSX.utils.encode_cell({r:7,c})];
+    if(!cell||!cell.v) continue; const v=cell.v;
+    if(typeof v==='string'&&/^\d{4}[.\-\/]\d{2}[.\-\/]\d{2}$/.test(v.trim())){date=v.trim();break}
+    if(v instanceof Date||(typeof v==='number'&&v>40000&&v<60000)){
+      const d=v instanceof Date?v:new Date(Math.round((v-25569)*86400*1000));
+      date=d.toISOString().slice(0,10).replace(/-/g,'.');break;
+    }
+  }
+  let startRow=30,hsCol=-1,upCol=-1,amtCol=-1;
+  for(let r=20;r<=40;r++){
+    const c=ws[XLSX.utils.encode_cell({r,c:2})];
+    if(c&&c.v&&/^[A-Z]{2}\d{2}-/.test(String(c.v).trim())){startRow=r;break}
+  }
+  for(let r=20;r<startRow;r++){
+    for(let c=0;c<=rng.e.c;c++){
+      const cell=ws[XLSX.utils.encode_cell({r,c})];
+      if(!cell||!cell.v) continue; const val=String(cell.v).toLowerCase();
+      if(val.includes('hscode')) hsCol=c;
+      if(val.includes('dap value')||val==='dap'){
+        const nx=ws[XLSX.utils.encode_cell({r:r+1,c})];
+        if(nx&&nx.v&&String(nx.v).toLowerCase().includes('u/price')){upCol=c;amtCol=c+1}
+      }
+    }
+  }
+  const items=[];
+  for(let r=startRow;r<=rng.e.r;r++){
+    const rv=c=>{const cell=ws[XLSX.utils.encode_cell({r,c})];return cell?(cell.v!==undefined?cell.v:''):''};
+    const code=rv(2),desc=rv(3),qty=rv(4),unit=rv(5);
+    if(!code||String(code).trim()==='') continue;
+    const uc=upCol!==-1?upCol:6, up=rv(uc);
+    const amt=amtCol!==-1?(rv(amtCol)||(qty*up||'')):(qty*up||'');
+    const hs=hsCol!==-1?String(rv(hsCol)).replace(/\.0$/,'').trim():'';
+    items.push({item_code:String(code).trim(),description:String(desc).trim(),hs_code:hs,qty,unit:unit||'PCE',unit_price:up,amount:amt});
+  }
+  return {header:{invoiceNo,date,terms},items};
+}
+
+// ═══════════════════════════════════════════
+// RENDER INVOICE TABLE
+// ═══════════════════════════════════════════
+function renderTable(){
+  const d=invoiceData, hasTariff=!!tariffMap;
+  document.getElementById('ci-no').textContent=d.header.invoiceNo||'—';
+  document.getElementById('ci-date').textContent=d.header.date||'—';
+  document.getElementById('ci-terms').textContent=d.header.terms||'—';
+  document.getElementById('ci-rows').textContent=d.items.length;
+
+  let tQty=0,tAmt=0,matched=0,unmatched=0,unitDiff=0;
+  const chip=v=>{
+    if(!v||v==='') return '<span style="color:var(--text4);font-size:10px">—</span>';
+    if(v==='*') return '<span class="rc rc-star">*</span>';
+    const n=parseFloat(v);
+    if(isNaN(n)) return `<span class="rc rc-mid">${v}</span>`;
+    if(n===0) return '<span class="rc rc-0">0%</span>';
+    if(n<=5) return `<span class="rc rc-low">${v}%</span>`;
+    if(n<=20) return `<span class="rc rc-mid">${v}%</span>`;
+    return `<span class="rc rc-high">${v}%</span>`;
+  };
+
+  // Build unit comparison cell
+  const unitCell=(idx, invUnit, rec)=>{
+    if(!hasTariff||!rec) {
+      return `<td class="td-unit">${invUnit}</td>`;
+    }
+    const btUnit = rec.don_vi_tinh || rec.unit_of_qty || '';
+    const status = compareUnits(invUnit, btUnit);
+    const cur = unitOverrides[idx] !== undefined ? unitOverrides[idx] : invUnit;
+
+    let statusHtml='', badgeBt='';
+    if(status==='exact'){
+      statusHtml=`<span class="ustatus us-ok">✓ Khớp</span>`;
+      badgeBt=`<span class="utag utag-bt">${btUnit}</span>`;
+    } else if(status==='equiv'){
+      statusHtml=`<span class="ustatus us-eq">≈ Tương đương</span>`;
+      badgeBt=`<span class="utag utag-diff">${btUnit}</span>`;
+      // equiv is OK — don't count as unitDiff problem
+    } else if(status==='diff'){
+      statusHtml=`<span class="ustatus us-diff">⚠ Khác nhau</span>`;
+      badgeBt=`<span class="utag utag-diff">${btUnit||'—'}</span>`;
+      unitDiff++;
+    } else {
+      statusHtml=`<span class="ustatus" style="color:var(--text3)">— Chưa rõ</span>`;
+      badgeBt=`<span class="utag utag-bt">${btUnit||'—'}</span>`;
+    }
+
+    const needSelect = status==='equiv'||status==='diff';
+    const opts = needSelect ? [invUnit, btUnit].filter(Boolean)
+      .map(u=>`<option value="${u}"${u===cur?' selected':''}>${u}</option>`).join('') : '';
+
+    return `<td class="td-ucmp">
+      <div class="unit-cmp">
+        <div class="unit-badges">
+          <span style="font-size:9px;color:var(--text3);margin-right:2px">①</span>
+          <span class="utag utag-inv" title="ĐVT1 — không thay đổi">${invUnit}</span>
+          ${btUnit ? '<span style="color:var(--text3);font-size:10px;margin:0 2px">↔</span>' : ''}
+          ${badgeBt}
+        </div>
+        <div>${statusHtml}</div>
+        ${needSelect ? `
+        <div style="font-size:9px;color:var(--text3);margin-top:4px">② ĐVT2 — chọn:</div>
+        <select class="unit-sel${unitOverrides[idx]!==undefined&&unitOverrides[idx]!==invUnit?' changed':''}" data-row="${idx}" onchange="setUnitOverride(this)">${opts}</select>` : ''}
+      </div>
+    </td>`;
+  };
+
+  let html='';
+  d.items.forEach((item,i)=>{
+    tQty+=Number(item.qty)||0; tAmt+=Number(item.amount)||0;
+    const rec=hasTariff&&item.hs_code?tariffMap.get(item.hs_code):null;
+    if(hasTariff){ if(rec) matched++; else if(item.hs_code) unmatched++; }
+    const hsCell=item.hs_code
+      ?`<span class="hs-link hs-jump" data-code="${item.hs_code}">${item.hs_code}</span>`
+      :'<span style="color:var(--text4)">—</span>';
+    html+=`<tr>
+      <td class="td-idx">${i+1}</td>
+      <td class="td-code">${item.item_code}</td>
+      <td class="td-desc">${item.description}</td>
+      <td>${hsCell}</td>
+      <td class="td-num">${fmt(item.qty)}</td>
+      <td class="td-unit">${item.unit}</td>
+      <td class="td-price">${fmt(item.unit_price)}</td>
+      <td class="td-price">${fmt(item.amount)}</td>
+      <td class="td-rate">${chip(rec?rec.thue_nk_tt:'')}</td>
+      <td class="td-rate">${chip(rec?rec.thue_nk_uu_dai:'')}</td>
+      <td class="td-rate">${chip(rec?rec.vat:'')}</td>
+      <td class="td-rate">${chip(rec?rec.evfta:'')}</td>
+      <td class="td-rate">${chip(rec?rec.cptpp:'')}</td>
+      ${unitCell(i, item.unit, rec)}
+      <td>${rec?`<button class="btn btn-outline hs-jump" style="padding:2px 7px;font-size:10px" data-code="${item.hs_code}">→</button>`:''}</td>
+    </tr>`;
+  });
+
+  document.getElementById('inv-tbody').innerHTML=html;
+  document.getElementById('tf-qty').textContent=fmt(tQty);
+  document.getElementById('tf-amt').textContent=fmt(tAmt);
+  document.getElementById('ci-amt').textContent=fmt(tAmt);
+  document.getElementById('ci-match').textContent=hasTariff?`${matched}/${d.items.length}`:'(tải biểu thuế để tra)';
+  document.getElementById('bd-rows').textContent=d.items.length+' dòng';
+  if(hasTariff){
+    const bm=document.getElementById('bd-match'),bn=document.getElementById('bd-nomatch');
+    bm.textContent=`✓ ${matched} mã khớp`; bm.style.display='inline';
+    if(unitDiff>0){
+      bn.textContent=`⚠ ${unitDiff} dòng lệch ĐVT`; bn.style.display='inline';
+    } else if(unmatched>0){
+      bn.textContent=`! ${unmatched} HS không tìm thấy`; bn.style.display='inline';
+    } else { bn.style.display='none'; }
+  }
+  hide('inv-empty'); show('inv-results');
+}
+
+async function setUnitOverride(sel){
+  const idx = parseInt(sel.dataset.row);
+  const chosen = sel.value;
+  const item = invoiceData.items[idx];
+
+  // Find other rows with same original invoice unit that also have a dropdown
+  const sameUnitRows = invoiceData.items
+    .map((it,i)=>({it,i}))
+    .filter(({it,i}) => i!==idx && it.unit===item.unit && unitOverrides[i]===undefined || (unitOverrides[i]===it.unit));
+
+  // Check if there are other rows with same original unit (regardless of current override)
+  const otherSameUnit = invoiceData.items
+    .map((it,i)=>({it,i}))
+    .filter(({it,i}) => i!==idx && it.unit===item.unit);
+
+  // Apply to current row first
+  unitOverrides[idx] = chosen;
+  sel.classList.toggle('changed', chosen!==item.unit);
+
+  if(otherSameUnit.length > 0){
+    const applyAll = await showModal(
+      `Có ${otherSameUnit.length} dòng khác cũng dùng ĐVT "${item.unit}". Áp dụng "${chosen}" cho tất cả không?`,
+      `Áp dụng cho tất cả ${otherSameUnit.length+1} dòng`,
+      'Chỉ dòng này'
     );
-    if (!sheetName) {
-      const available = Object.keys(wb.Sheets).join(", ");
-      throw new Error("Không tìm thấy sheet 'INVOICE' trong file. Các sheet hiện có: " + available);
-    }
-    const ws = wb.Sheets[sheetName];
-
-    const getCell = addr => {
-      const cell = ws[addr];
-      return cell ? (cell.v !== undefined ? cell.v : "") : "";
-    };
-
-    const invoiceNo = getCell("G6");
-    const shipper = getCell("B7");
-    const consignee = getCell("B13");
-    const termsOfDelivery = getCell("G24");
-
-    // Auto-detect date on row 8
-    let invoiceDate = "";
-    const wsRange = XLSX.utils.decode_range(ws["!ref"]);
-    for (let c = 0; c <= wsRange.e.c; c++) {
-      const cell = ws[XLSX.utils.encode_cell({ r: 7, c })];
-      if (!cell || !cell.v) continue;
-      const v = cell.v;
-      if (typeof v === "string" && /^\d{4}[.\-\/]\d{2}[.\-\/]\d{2}$/.test(v.trim())) {
-        invoiceDate = v.trim(); break;
-      }
-      if (v instanceof Date || (typeof v === "number" && v > 40000 && v < 60000)) {
-        const d = v instanceof Date ? v : new Date(Math.round((v - 25569) * 86400 * 1000));
-        invoiceDate = d.toISOString().slice(0, 10).replace(/-/g, "."); break;
-      }
-    }
-
-    const range = XLSX.utils.decode_range(ws["!ref"]);
-
-    // Auto-detect data start row
-    let dataStartRow = 30;
-    for (let r = 20; r <= 40; r++) {
-      const cell = ws[XLSX.utils.encode_cell({ r, c: 2 })];
-      if (cell && cell.v && /^[A-Z]{2}\d{2}-/.test(String(cell.v).trim())) {
-        dataStartRow = r; break;
-      }
-    }
-
-    // Auto-detect columns
-    let hsCodeCol = -1, dapUpriceCol = -1, dapAmountCol = -1;
-    for (let r = 20; r < dataStartRow; r++) {
-      for (let c = 0; c <= range.e.c; c++) {
-        const cell = ws[XLSX.utils.encode_cell({ r, c })];
-        if (!cell || !cell.v) continue;
-        const val = String(cell.v).toLowerCase();
-        if (val.includes("hscode")) hsCodeCol = c;
-        if (val.includes("dap value") || val === "dap") {
-          const nextRow = ws[XLSX.utils.encode_cell({ r: r + 1, c })];
-          if (nextRow && nextRow.v && String(nextRow.v).toLowerCase().includes("u/price")) {
-            dapUpriceCol = c;
-            dapAmountCol = c + 1;
-          }
+    if(applyAll){
+      otherSameUnit.forEach(({i})=>{ unitOverrides[i]=chosen; });
+      // Update all other selects with same unit visually
+      document.querySelectorAll('.unit-sel').forEach(s=>{
+        const r=parseInt(s.dataset.row);
+        if(r!==idx && invoiceData.items[r]?.unit===item.unit){
+          s.value=chosen;
+          s.classList.toggle('changed', chosen!==item.unit);
         }
-      }
+      });
     }
-
-    const items = [];
-    for (let r = dataStartRow; r <= range.e.r; r++) {
-      const rowVal = col => {
-        const cell = ws[XLSX.utils.encode_cell({ r, c: col })];
-        return cell ? (cell.v !== undefined ? cell.v : "") : "";
-      };
-      const itemCode = rowVal(2);
-      const description = rowVal(3);
-      const qty = rowVal(4);
-      const unit = rowVal(5);
-      const unitPriceCol = dapUpriceCol !== -1 ? dapUpriceCol : 6;
-      const unitPrice = rowVal(unitPriceCol);
-
-      if (itemCode && String(itemCode).trim() !== "") {
-        const amount = dapAmountCol !== -1
-          ? rowVal(dapAmountCol) || (typeof qty === "number" && typeof unitPrice === "number" ? qty * unitPrice : "")
-          : (typeof qty === "number" && typeof unitPrice === "number" ? qty * unitPrice : "");
-        const hsCode = hsCodeCol !== -1 ? rowVal(hsCodeCol) : "";
-        const fullDesc = itemCode + " - " + description + ". Dùng cho màn hình dẹt, hàng mới 100%";
-        items.push({
-          item_code: String(itemCode).trim(),
-          description: String(description).trim(),
-          full_description: fullDesc,
-          hs_code: hsCode ? String(hsCode) : "",
-          qty1: qty, unit1: unit || "PCE",
-          qty2: qty, unit2: unit || "PCE",
-          unit_price: unitPrice, amount
-        });
-      }
-    }
-
-    return { header: { invoiceNo, invoiceDate, shipper, consignee, termsOfDelivery }, items };
   }
+}
 
-  // ── Process file ──────────────────────────────────────────────
-  function processFile(file) {
-    currentFileName = file.name;
-    document.getElementById("error-box").style.display = "none";
-    document.getElementById("results").style.display = "none";
-    document.getElementById("loading").style.display = "block";
+// ═══════════════════════════════════════════
+// TARIFF TAB
+// ═══════════════════════════════════════════
+function renderTariffTab(){
+  if(!tariffMap){show('t-nodata');hide('t-ready');return}
+  hide('t-nodata'); show('t-ready');
+  document.getElementById('t-prompt-lbl').textContent=`Biểu thuế sẵn sàng — ${tariffMap.size.toLocaleString()} mã hàng`;
+  // Build HS pills from invoice
+  const sec=document.getElementById('hs-pills-section');
+  if(invoiceData){
+    const codes=[...new Set(invoiceData.items.map(x=>x.hs_code).filter(Boolean))];
+    if(codes.length){
+      document.getElementById('hs-pills').innerHTML=codes.map(c=>
+        `<span class="hs-pill${selCode===c?' active':''}" data-code="${c}">${c}</span>`
+      ).join('');
+      show('hs-pills-section');
+    } else { hide('hs-pills-section'); }
+  } else { hide('hs-pills-section'); }
+}
 
-    const reader = new FileReader();
-    reader.onload = e => {
-      try {
-        const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
-        currentData = parseInvoiceSheet(wb);
-        renderResults(currentData);
-      } catch (err) {
-        const box = document.getElementById("error-box");
-        box.textContent = "✕ " + err.message;
-        box.style.display = "block";
-      } finally {
-        document.getElementById("loading").style.display = "none";
-      }
-    };
-    reader.readAsArrayBuffer(file);
+function doSearch(val){
+  if(!tariffMap) return;
+  val=val.trim();
+  const layout=document.getElementById('t-layout'), prompt=document.getElementById('t-prompt');
+  if(!val){layout.style.display='none';prompt.style.display='block';return}
+  const q=val.toLowerCase(), found=[];
+  for(const[,rec] of tariffMap){
+    if(rec.ma_hang.startsWith(q)||rec.mo_ta_viet.toLowerCase().includes(q)||rec.mo_ta_anh.toLowerCase().includes(q))
+      found.push(rec);
+    if(found.length>=30) break;
   }
+  document.getElementById('t-res-lbl').textContent=`KẾT QUẢ (${found.length}${found.length===30?'+':''})`;
+  const listEl=document.getElementById('t-list');
+  listEl.innerHTML=found.length?found.map(r=>{
+    const is8=/^\d{8}$/.test(r.ma_hang);
+    return `<div class="t-item${selCode===r.ma_hang?' active':''}" data-code="${r.ma_hang}">
+      <div class="t-item-code">${r.ma_hang}</div>
+      <div class="t-item-name${is8?'':' parent'}">${r.mo_ta_viet||r.mo_ta_anh||'—'}</div>
+    </div>`;
+  }).join(''):`<div class="empty" style="padding:28px 0"><div class="empty-sub">Không tìm thấy "<b>${val}</b>"</div></div>`;
+  layout.style.display='grid'; prompt.style.display='none';
+  const exact=tariffMap.get(val)||tariffMap.get(val.padStart(8,'0'));
+  if(exact) showDetail(exact.ma_hang);
+}
 
-  // ── Render ────────────────────────────────────────────────────
-  function renderResults(data) {
-    // Header cards
-    document.getElementById("card-invoice-no").textContent = data.header.invoiceNo || "—";
-    document.getElementById("card-date").textContent = data.header.invoiceDate || "—";
-    document.getElementById("card-terms").textContent = data.header.termsOfDelivery || "—";
-    document.getElementById("card-total").textContent = data.items.length;
-    document.getElementById("row-count-badge").textContent = data.items.length + " dòng dữ liệu";
+function clearSearch(){
+  document.getElementById('t-input').value='';
+  document.getElementById('t-layout').style.display='none';
+  document.getElementById('t-prompt').style.display='block';
+  selCode=null;
+}
 
-    // Upload zone update
-    document.getElementById("upload-icon").className = "upload-icon success";
-    document.getElementById("upload-icon").textContent = "✓";
-    document.getElementById("upload-text").className = "upload-text success";
-    document.getElementById("upload-text").textContent = currentFileName;
-    document.getElementById("upload-sub").textContent = "Click để import file invoice khác";
+function showDetail(code){
+  const rec=tariffMap?.get(code); if(!rec) return;
+  selCode=code;
+  document.querySelectorAll('.t-item').forEach(el=>el.classList.toggle('active',el.dataset.code===code));
+  document.querySelectorAll('.hs-pill').forEach(el=>el.classList.toggle('active',el.dataset.code===code));
+  const is8=/^\d{8}$/.test(code);
+  const fr=v=>{
+    if(!v||v==='') return null;
+    if(v==='*') return `<span style="color:var(--purple);font-weight:700">*</span>`;
+    return v+'%';
+  };
+  const rbox=(lbl,val,cls)=>{
+    const has=val&&val!=='';
+    return `<div class="r-box${has?' has':''}">
+      <div class="r-lbl">${lbl}</div>
+      <div class="r-val ${has?cls:'rv-dim'}">${fr(val)||'—'}</div>
+    </div>`;
+  };
+  document.getElementById('t-detail').innerHTML=`
+    <div class="d-header">
+      <div class="d-code">${rec.ma_hang}</div>
+      <div>
+        <div class="d-viet">${rec.mo_ta_viet||'—'}</div>
+        <div class="d-eng">${rec.mo_ta_anh||'—'}</div>
+        ${!is8?`<div style="margin-top:8px"><span class="badge b-amber">Nhóm cha — xem mã 8 chữ số bên dưới</span></div>`:''}
+      </div>
+    </div>
+    <div class="d-section">
+      <div class="sec-hdr">Thông tin cơ bản</div>
+      <div class="r-grid" style="grid-template-columns:repeat(auto-fill,minmax(145px,1fr))">
+        ${rbox('Đơn vị tính (VN)',rec.don_vi_tinh,'rv-blue')}
+        ${rbox('Unit of Qty (EN)',rec.unit_of_qty,'rv-blue')}
+        ${rbox('VAT',rec.vat,'rv-green')}
+        ${rec.tt_db?rbox('Thuế TTĐB',rec.tt_db,'rv-amber'):''}
+        ${rec.thue_bvmt?rbox('Thuế BVMT',rec.thue_bvmt,'rv-green'):''}
+        ${rec.giam_vat?rbox('Giảm VAT',rec.giam_vat,'rv-purple'):''}
+      </div>
+    </div>
+    <div class="d-section">
+      <div class="sec-hdr">Thuế nhập khẩu</div>
+      <div class="r-grid" style="grid-template-columns:1fr 1fr">
+        ${rbox('NK Thông thường',rec.thue_nk_tt,'rv-amber')}
+        ${rbox('NK Ưu đãi (MFN)',rec.thue_nk_uu_dai,'rv-blue')}
+      </div>
+    </div>
+    <div class="d-section">
+      <div class="sec-hdr">Thuế FTA</div>
+      <div class="r-grid">${FTA.map(([k,l])=>rbox(l,rec[k],'rv-green')).join('')}</div>
+    </div>
+    <div class="d-section">
+      <div class="sec-hdr">Thuế xuất khẩu</div>
+      <div class="r-grid" style="grid-template-columns:repeat(4,1fr)">
+        ${[['xk','XK'],['xk_cptpp','XK-CPTPP'],['xk_ev','XK-EV'],['xk_ukv','XK-UKV']].map(([k,l])=>rbox(l,rec[k],'rv-blue')).join('')}
+      </div>
+    </div>
+    ${rec.chinh_sach?`<div class="d-section">
+      <div class="sec-hdr">⚠ Chính sách mặt hàng</div>
+      <div class="policy-box"><p>${rec.chinh_sach}</p></div>
+    </div>`:''}
+  `;
+}
 
-    // Header bar
-    document.getElementById("header-filename").textContent = "📄 " + currentFileName;
-    document.getElementById("header-filename").style.display = "inline";
-    document.getElementById("header-clear-btn").style.display = "inline-block";
+function jumpToTariff(code){
+  switchTab('tariff');
+  setTimeout(()=>{const inp=document.getElementById('t-input');inp.value=code;doSearch(code);},40);
+}
 
-    // Build table rows
-    let html = "";
-    let totalQty = 0, totalAmount = 0;
-    data.items.forEach((item, i) => {
-      totalQty += Number(item.qty1) || 0;
-      totalAmount += Number(item.amount) || 0;
-      html += `<tr>
-        <td class="td-idx">${i + 1}</td>
-        <td class="td-code">${item.item_code}</td>
-        <td class="td-desc">${item.description}</td>
-        <td class="td-hs">${item.hs_code || "—"}</td>
-        <td class="td-num">${fmt(item.qty1)}</td>
-        <td class="td-unit">${item.unit1}</td>
-        <td class="td-num">${fmt(item.qty2)}</td>
-        <td class="td-unit">${item.unit2}</td>
-        <td class="td-price">${fmt(item.unit_price)}</td>
-        <td class="td-price">${fmt(item.amount)}</td>
-      </tr>`;
-    });
-    document.getElementById("table-body").innerHTML = html;
-    document.getElementById("total-qty").textContent = fmt(totalQty);
-    document.getElementById("total-amount").textContent = fmt(totalAmount);
+// ═══════════════════════════════════════════
+// EVENT DELEGATION
+// ═══════════════════════════════════════════
+document.addEventListener('click',e=>{
+  const jump=e.target.closest('.hs-jump');
+  if(jump){jumpToTariff(jump.dataset.code);return}
+  const item=e.target.closest('.t-item');
+  if(item){showDetail(item.dataset.code);return}
+  const pill=e.target.closest('.hs-pill');
+  if(pill){document.getElementById('t-input').value=pill.dataset.code;doSearch(pill.dataset.code);return}
+});
 
-    document.getElementById("results").style.display = "block";
-  }
+// ═══════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════
+function exportBook1(){
+  if(!invoiceData) return;
+  const wb=XLSX.utils.book_new();
+  const rows=[[null,null,null,'hs code',null,null,null,null,null,null],
+    ...invoiceData.items.map((it,i)=>{
+      const unit1 = it.unit;                                              // ĐVT1: LUÔN giữ nguyên từ invoice
+      const unit2 = unitOverrides[i]!==undefined ? unitOverrides[i] : it.unit; // ĐVT2: có thể override
+      return [null, it.item_code,
+        it.item_code+' - '+it.description+'. Dùng cho màn hình dẹt, hàng mới 100%',
+        it.hs_code||null,
+        it.qty, unit1,   // SL1 + ĐVT1 (không đổi)
+        it.qty, unit2,   // SL2 + ĐVT2 (có thể đổi)
+        it.unit_price, it.amount];
+    })];
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:4},{wch:16},{wch:80},{wch:12},{wch:12},{wch:10},{wch:12},{wch:10},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
+  XLSX.writeFile(wb,'book1_'+(invoiceData.header.invoiceNo||'invoice')+'.xlsx');
+}
+function exportEnriched(){
+  if(!invoiceData) return;
+  const wb=XLSX.utils.book_new();
+  const hdrs=['#','Item No.','Mô tả','HS Code',
+    'SL','ĐVT1 (Invoice — không đổi)','SL2','ĐVT2 (export)',
+    'ĐVT Biểu Thuế','Trạng thái ĐVT',
+    'Đơn giá','Thành tiền',
+    'NK TT%','MFN%','VAT%','EVFTA%','CPTPP%','ATIGA%','Chính sách'];
+  const rows=invoiceData.items.map((it,i)=>{
+    const rec=tariffMap&&it.hs_code?tariffMap.get(it.hs_code):null;
+    const btUnit=rec?(rec.don_vi_tinh||rec.unit_of_qty||''):'';
+    const status=rec?compareUnits(it.unit,btUnit):'';
+    const statusLabel={'exact':'Khớp','equiv':'Tương đương','diff':'Khác nhau','unknown':'Chưa rõ','':''};
+    const unit1 = it.unit;                                                     // ĐVT1: không đổi
+    const unit2 = unitOverrides[i]!==undefined ? unitOverrides[i] : it.unit;  // ĐVT2: có thể override
+    return[i+1, it.item_code, it.description, it.hs_code||'',
+      it.qty, unit1,          // SL + ĐVT1
+      it.qty, unit2,          // SL2 + ĐVT2
+      btUnit, statusLabel[status]||'',
+      it.unit_price, it.amount,
+      rec?.thue_nk_tt||'', rec?.thue_nk_uu_dai||'', rec?.vat||'',
+      rec?.evfta||'', rec?.cptpp||'', rec?.atiga||'',
+      rec?.chinh_sach||''];
+  });
+  const ws=XLSX.utils.aoa_to_sheet([hdrs,...rows]);
+  ws['!cols']=[{wch:4},{wch:16},{wch:46},{wch:12},
+    {wch:8},{wch:20},{wch:8},{wch:14},
+    {wch:14},{wch:14},
+    {wch:12},{wch:14},
+    {wch:9},{wch:9},{wch:8},{wch:9},{wch:9},{wch:9},{wch:50}];
+  XLSX.utils.book_append_sheet(wb,ws,'Invoice+Tariff');
+  XLSX.writeFile(wb,'invoice_full_'+(invoiceData.header.invoiceNo||'invoice')+'.xlsx');
+}
 
-  // ── Export ────────────────────────────────────────────────────
-  function exportToExcel() {
-    if (!currentData) return;
-    const wb = XLSX.utils.book_new();
-    const rows = [
-      [null, null, null, "hs code", null, null, null, null, null, null],
-      ...currentData.items.map(item => [
-        null, item.item_code, item.full_description,
-        item.hs_code || null,
-        item.qty1, item.unit1,
-        item.qty2, item.unit2,
-        item.unit_price, item.amount
-      ])
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws["!cols"] = [
-      { wch: 4 }, { wch: 16 }, { wch: 80 }, { wch: 12 },
-      { wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 8 },
-      { wch: 14 }, { wch: 16 }
-    ];
-    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-    XLSX.writeFile(wb, "output_" + (currentData.header.invoiceNo || "invoice") + ".xlsx");
-  }
+// ═══════════════════════════════════════════
+// CLEAR
+// ═══════════════════════════════════════════
+function clearInvoice(){
+  invoiceData=null; unitOverrides={}; document.getElementById('f-i').value='';
+  setUZ('i','','📄 Kéo thả file Invoice (.xlsx)');
+  hide('inv-results'); show('inv-empty');
+  document.getElementById('tb-inv').style.display='none';
+  hide('bd-match'); hide('bd-nomatch'); updateSteps();
+}
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+const pv=v=>(v===null||v===undefined?'':String(v).trim());
+const fmt=n=>{if(n===''||n===null||n===undefined)return'—';const x=Number(n);return isNaN(x)?String(n):x.toLocaleString('vi-VN')};
+const show=id=>{const el=document.getElementById(id);if(el)el.style.display='block'};
+const hide=id=>{const el=document.getElementById(id);if(el)el.style.display='none'};
+const showErr=(id,msg)=>{const el=document.getElementById(id);if(el){el.textContent='✕ '+msg;el.style.display='block'}};
+
+function setUZ(which,state,title){
+  const iEl=document.getElementById('uzi-'+which);
+  const tEl=document.getElementById('uzt-'+which);
+  const zone=document.getElementById('uz-'+which);
+  const defIcon=which==='t'?'📊':'📄';
+  if(iEl) iEl.textContent=state==='done'?'✅':state==='err'?'❌':defIcon;
+  if(tEl){tEl.textContent=title;tEl.style.color=state==='done'?'var(--green)':state==='err'?'var(--red)':'';}
+  if(zone){zone.className='uz';if(state) zone.classList.add(state==='done'?'done':state==='err'?'err':'');}
+}
+
+updateSteps();
 </script>
+
+<!-- MODAL -->
+<div id="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center;backdrop-filter:blur(3px)">
+  <div style="background:#13162a;border:1px solid #252a45;border-radius:10px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+    <div style="font-size:14px;color:#d0d6e8;font-family:'Be Vietnam Pro',sans-serif;line-height:1.6;margin-bottom:20px" id="modal-msg"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="modalAnswer(false)" id="modal-no">Chỉ dòng này</button>
+      <button class="btn btn-primary" onclick="modalAnswer(true)" id="modal-yes">Áp dụng tất cả</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
