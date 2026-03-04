@@ -304,7 +304,8 @@
           <tr>
             <th>#</th>
             <th>Item No.</th>
-            <th>Mô tả</th>
+            <th>Mô tả (EN)</th>
+            <th>Tên tiếng Việt</th>
             <th>HS Code</th>
             <th style="text-align:right">SL</th>
             <th>ĐVT</th>
@@ -322,7 +323,7 @@
         <tbody id="inv-tbody"></tbody>
         <tfoot>
           <tr>
-            <td colspan="4" style="color:var(--text3)">Tổng cộng</td>
+            <td colspan="5" style="color:var(--text3)">Tổng cộng</td>
             <td class="td-num" id="tf-qty"></td>
             <td colspan="2"></td>
             <td class="td-price" id="tf-amt"></td>
@@ -641,48 +642,156 @@ function loadInvoice(file){
 }
 
 function parseInvoice(wb){
-  const sn=Object.keys(wb.Sheets).find(s=>s.trim().toUpperCase()==='INVOICE');
-  if(!sn) throw new Error("Không tìm thấy sheet 'INVOICE'. Có: "+Object.keys(wb.Sheets).join(', '));
-  const ws=wb.Sheets[sn];
-  const gc=a=>{const c=ws[a];return c?(c.v!==undefined?c.v:''):''};
-  const invoiceNo=gc('G6'), terms=gc('G24');
-  let date='';
-  const rng=XLSX.utils.decode_range(ws['!ref']);
-  for(let c=0;c<=rng.e.c;c++){
-    const cell=ws[XLSX.utils.encode_cell({r:7,c})];
-    if(!cell||!cell.v) continue; const v=cell.v;
-    if(typeof v==='string'&&/^\d{4}[.\-\/]\d{2}[.\-\/]\d{2}$/.test(v.trim())){date=v.trim();break}
-    if(v instanceof Date||(typeof v==='number'&&v>40000&&v<60000)){
-      const d=v instanceof Date?v:new Date(Math.round((v-25569)*86400*1000));
-      date=d.toISOString().slice(0,10).replace(/-/g,'.');break;
-    }
-  }
-  let startRow=30,hsCol=-1,upCol=-1,amtCol=-1;
-  for(let r=20;r<=40;r++){
-    const c=ws[XLSX.utils.encode_cell({r,c:2})];
-    if(c&&c.v&&/^[A-Z]{2}\d{2}-/.test(String(c.v).trim())){startRow=r;break}
-  }
-  for(let r=20;r<startRow;r++){
-    for(let c=0;c<=rng.e.c;c++){
+  // ── Tìm sheet INVOICE ──
+  const sn = Object.keys(wb.Sheets).find(s => s.trim().toUpperCase() === 'INVOICE');
+  if(!sn) throw new Error("Không tìm thấy sheet 'INVOICE'. Có: " + Object.keys(wb.Sheets).join(', '));
+  const ws = wb.Sheets[sn];
+  const rng = XLSX.utils.decode_range(ws['!ref']);
+  const grc = (r,c) => { const cell=ws[XLSX.utils.encode_cell({r,c})]; return cell?(cell.v!==undefined?cell.v:''):''; };
+
+  // ── Header: Invoice No, Date, Terms ──
+  let invoiceNo='', date='', terms='';
+  for(let r=0; r<=rng.e.r; r++){
+    for(let c=0; c<=rng.e.c; c++){
       const cell=ws[XLSX.utils.encode_cell({r,c})];
-      if(!cell||!cell.v) continue; const val=String(cell.v).toLowerCase();
-      if(val.includes('hscode')) hsCol=c;
-      if(val.includes('dap value')||val==='dap'){
-        const nx=ws[XLSX.utils.encode_cell({r:r+1,c})];
-        if(nx&&nx.v&&String(nx.v).toLowerCase().includes('u/price')){upCol=c;amtCol=c+1}
+      if(!cell||!cell.v) continue;
+      const v=cell.v, vs=String(v).trim();
+      // Invoice No: chuỗi số 6-10 chữ số
+      if(!invoiceNo && typeof v==='string' && /^\d{6,10}$/.test(vs)) invoiceNo=vs;
+      // Date: datetime hoặc serial Excel
+      if(!date && (v instanceof Date||(typeof v==='number'&&v>40000&&v<60000))){
+        const d=v instanceof Date?v:new Date(Math.round((v-25569)*86400*1000));
+        date=d.toISOString().slice(0,10).replace(/-/g,'.');
       }
+      // Terms of Delivery label → lấy ô bên dưới
+      if(typeof v==='string' && /terms of delivery/i.test(vs)){
+        const bel=ws[XLSX.utils.encode_cell({r:r+1,c})];
+        if(bel&&bel.v) terms=String(bel.v).trim();
+      }
+      // Bắt trực tiếp DAP/FOB/CIF/T/T ở đầu ô
+      if(!terms && typeof v==='string' && /^(t\/t|dap|fob|cif|cfr|exw|ddp)\b/i.test(vs)) terms=vs;
+    }
+    if(invoiceNo && date && terms) break;
+  }
+
+  // ── Tìm header row của bảng hàng hóa ──
+  let headerRow=-1;
+  const colMap={itemNo:-1,desc:-1,qty:-1,unit:-1,uprice:-1,amount:-1,hsCode:-1};
+  for(let r=0; r<=Math.min(40,rng.e.r); r++){
+    let hits=0;
+    for(let c=0; c<=rng.e.c; c++){
+      const cell=ws[XLSX.utils.encode_cell({r,c})];
+      if(!cell||!cell.v) continue;
+      const vs=String(cell.v).toLowerCase().replace(/[\s'.]/g,'');
+      if(/itemno/.test(vs))           { colMap.itemNo=c; hits++; }
+      if(/description|desc/.test(vs)) { colMap.desc=c; hits++; }
+      if(/qty|q'ty/.test(vs))         { colMap.qty=c; hits++; }
+      if(vs==='unit'||vs==='đvt')     { colMap.unit=c; hits++; }
+      if(/u\/price|uprice|unitprice/.test(vs)) { colMap.uprice=c; hits++; }
+      if(/amount|thànhtiền|thanhtiền/.test(vs)){ colMap.amount=c; hits++; }
+      if(/hscode|^hs$/.test(vs))      { colMap.hsCode=c; hits++; }
+    }
+    if(hits>=2 && colMap.itemNo!==-1){ headerRow=r; break; }
+    if(hits>=3){ headerRow=r; break; }
+  }
+
+  // Fallback: nếu không detect được cột, dùng offset cứng từ cột itemNo
+  // Format này: C=ItemNo, D=Desc, E=Qty, G=Unit, H=U/price, I=Amount
+  if(colMap.itemNo!==-1){
+    const b=colMap.itemNo;
+    if(colMap.desc   ===-1) colMap.desc   =b+1;
+    if(colMap.qty    ===-1) colMap.qty    =b+2;
+    if(colMap.unit   ===-1) colMap.unit   =b+4;
+    if(colMap.uprice ===-1) colMap.uprice =b+5;
+    if(colMap.amount ===-1) colMap.amount =b+6;
+  }
+
+  // ── Đọc sheet "hs code" → hsMap: VD_code → {hs_code, ten_viet, dvt2} ──
+  const hsMap=new Map();
+  const hsSheetName=Object.keys(wb.Sheets).find(s=>s.toLowerCase().replace(/\s/g,'')==='hscode');
+  if(hsSheetName){
+    const hsWs=wb.Sheets[hsSheetName];
+    const hsRows=XLSX.utils.sheet_to_json(hsWs,{header:1,defval:null});
+    let hsCols={vdCode:-1,name:-1,hsCode:-1,dvt2:-1};
+    // Tìm header row của hs code sheet
+    for(let r=0;r<Math.min(5,hsRows.length);r++){
+      const row=hsRows[r]; if(!row) continue;
+      row.forEach((v,c)=>{
+        if(!v) return;
+        const vs=String(v).toLowerCase().replace(/\s/g,'');
+        if(vs.includes('vdcode')||vs==='vdcode') hsCols.vdCode=c;
+        if(vs.includes('tên')||vs.includes('ten')||vs.includes('name')) hsCols.name=c;
+        if(vs.includes('hscode')||vs==='hs') hsCols.hsCode=c;
+        if(vs.includes('đvt2')||vs.includes('dvt2')||vs==='unit') hsCols.dvt2=c;
+      });
+      if(hsCols.vdCode!==-1&&hsCols.hsCode!==-1) break;
+    }
+    // Đọc data
+    for(let r=0;r<hsRows.length;r++){
+      const row=hsRows[r]; if(!row) continue;
+      const vdCode=pv(row[hsCols.vdCode]); if(!vdCode||isNaN(Number(vdCode))===false&&Number(vdCode)<1) {
+        // vdCode hợp lệ phải là mã sản phẩm, không phải số thứ tự
+        if(/^\d{1,3}$/.test(vdCode)) continue; // bỏ qua STT
+        if(!vdCode) continue;
+      }
+      // Lấy VD code thực: thường là cột thứ 2 (index 1)
+      const vdCodeReal=pv(row[hsCols.vdCode!==-1?hsCols.vdCode:1]);
+      if(!vdCodeReal||/^\d{1,3}$/.test(vdCodeReal)) continue;
+
+      const rawName=pv(row[hsCols.name!==-1?hsCols.name:2]);
+      let tenViet='';
+      // Tách tên: "mã#&Tên VN/Tên EN" hoặc "Tên VN/Tên EN"
+      const namePart=rawName.includes('#&')?rawName.split('#&')[1]||rawName:rawName;
+      tenViet=namePart.includes('/')?namePart.split('/')[0].trim():namePart.trim();
+
+      const hsRaw=pv(row[hsCols.hsCode!==-1?hsCols.hsCode:3]).replace(/\.0$/,'').replace(/\s/g,'');
+      const dvt2=hsCols.dvt2!==-1?pv(row[hsCols.dvt2]):'';
+      if(vdCodeReal) hsMap.set(vdCodeReal,{hs_code:hsRaw,ten_viet:tenViet,dvt2});
     }
   }
+
+  // ── Đọc dòng hàng hóa ──
   const items=[];
+  const STOP=/^(total|tổng|tong|grand|subtotal|signed|ghi chú)/i;
+  const startRow=headerRow+1;
   for(let r=startRow;r<=rng.e.r;r++){
-    const rv=c=>{const cell=ws[XLSX.utils.encode_cell({r,c})];return cell?(cell.v!==undefined?cell.v:''):''};
-    const code=rv(2),desc=rv(3),qty=rv(4),unit=rv(5);
-    if(!code||String(code).trim()==='') continue;
-    const uc=upCol!==-1?upCol:6, up=rv(uc);
-    const amt=amtCol!==-1?(rv(amtCol)||(qty*up||'')):(qty*up||'');
-    const hs=hsCol!==-1?String(rv(hsCol)).replace(/\.0$/,'').trim():'';
-    items.push({item_code:String(code).trim(),description:String(desc).trim(),hs_code:hs,qty,unit:unit||'PCE',unit_price:up,amount:amt});
+    const rv=c=>grc(r,c);
+    const rawCode=colMap.itemNo!==-1?rv(colMap.itemNo):'';
+    const itemCode=String(rawCode).trim();
+    if(!itemCode) continue;
+    if(STOP.test(itemCode)) break;
+    // Bỏ qua STT thuần (số nguyên 1-999)
+    const desc=colMap.desc!==-1?String(rv(colMap.desc)).trim():'';
+    if(!desc&&/^\d{1,3}$/.test(itemCode)) continue;
+
+    const qty    =colMap.qty    !==-1?rv(colMap.qty)   :'';
+    const unit1  =colMap.unit   !==-1?String(rv(colMap.unit)).trim():'PCE';
+    const uprice =colMap.uprice !==-1?rv(colMap.uprice):'';
+    const amount =colMap.amount !==-1?rv(colMap.amount):(Number(qty)*Number(uprice)||'');
+
+    // HS Code: ưu tiên từ cột trong INVOICE, sau đó từ hsMap
+    let hsCode='', tenViet='', dvt2='';
+    if(colMap.hsCode!==-1){
+      const raw=String(rv(colMap.hsCode)).replace(/\.0$/,'').trim();
+      if(/^\d{6,10}$/.test(raw)) hsCode=raw;
+    }
+    const hsRec=hsMap.get(itemCode);
+    if(hsRec){
+      if(!hsCode) hsCode=hsRec.hs_code;
+      tenViet=hsRec.ten_viet;
+      dvt2=hsRec.dvt2;
+    }
+
+    items.push({
+      item_code: itemCode,
+      description: desc,
+      ten_viet: tenViet,
+      hs_code: hsCode,
+      qty, unit: unit1||'PCE', dvt2,
+      unit_price: uprice, amount
+    });
   }
+  if(!items.length) throw new Error('Không đọc được dòng hàng hóa nào. Kiểm tra format sheet INVOICE.');
   return {header:{invoiceNo,date,terms},items};
 }
 
@@ -708,34 +817,38 @@ function renderTable(){
     return `<span class="rc rc-high">${v}%</span>`;
   };
 
-  // Build unit comparison cell
-  const unitCell=(idx, invUnit, rec)=>{
-    if(!hasTariff||!rec) {
-      return `<td class="td-unit">${invUnit}</td>`;
-    }
-    const btUnit = rec.don_vi_tinh || rec.unit_of_qty || '';
-    const status = compareUnits(invUnit, btUnit);
+  // Build unit comparison cell — now also considers dvt2 from hs code sheet
+  const unitCell=(idx, invUnit, rec, dvt2)=>{
+    // Collect all candidate ĐVT2 options
+    const btUnit = rec ? (rec.don_vi_tinh || rec.unit_of_qty || '') : '';
+    // Merge: btUnit from biểu thuế + dvt2 from hs code sheet (deduplicated)
+    const candidates = [...new Set([invUnit, btUnit, dvt2].filter(Boolean))];
     const cur = unitOverrides[idx] !== undefined ? unitOverrides[idx] : invUnit;
 
-    let statusHtml='', badgeBt='';
+    if(!hasTariff && !dvt2) return `<td class="td-unit">${invUnit}</td>`;
+
+    // Compare: prefer dvt2 from hs code if no biểu thuế loaded
+    const compareUnit = btUnit || dvt2 || '';
+    const status = compareUnit ? compareUnits(invUnit, compareUnit) : 'unknown';
+
+    let statusHtml='', badgeCompare='';
     if(status==='exact'){
       statusHtml=`<span class="ustatus us-ok">✓ Khớp</span>`;
-      badgeBt=`<span class="utag utag-bt">${btUnit}</span>`;
+      badgeCompare=`<span class="utag utag-bt">${compareUnit}</span>`;
     } else if(status==='equiv'){
       statusHtml=`<span class="ustatus us-eq">≈ Tương đương</span>`;
-      badgeBt=`<span class="utag utag-diff">${btUnit}</span>`;
-      // equiv is OK — don't count as unitDiff problem
+      badgeCompare=`<span class="utag utag-diff">${compareUnit}</span>`;
     } else if(status==='diff'){
       statusHtml=`<span class="ustatus us-diff">⚠ Khác nhau</span>`;
-      badgeBt=`<span class="utag utag-diff">${btUnit||'—'}</span>`;
+      badgeCompare=`<span class="utag utag-diff">${compareUnit||'—'}</span>`;
       unitDiff++;
     } else {
-      statusHtml=`<span class="ustatus" style="color:var(--text3)">— Chưa rõ</span>`;
-      badgeBt=`<span class="utag utag-bt">${btUnit||'—'}</span>`;
+      statusHtml=`<span class="ustatus" style="color:var(--text3)">—</span>`;
+      badgeCompare=compareUnit?`<span class="utag utag-bt">${compareUnit}</span>`:'';
     }
 
-    const needSelect = status==='equiv'||status==='diff';
-    const opts = needSelect ? [invUnit, btUnit].filter(Boolean)
+    const needSelect = candidates.length > 1 && (status==='equiv'||status==='diff');
+    const opts = needSelect ? candidates
       .map(u=>`<option value="${u}"${u===cur?' selected':''}>${u}</option>`).join('') : '';
 
     return `<td class="td-ucmp">
@@ -743,8 +856,8 @@ function renderTable(){
         <div class="unit-badges">
           <span style="font-size:9px;color:var(--text3);margin-right:2px">①</span>
           <span class="utag utag-inv" title="ĐVT1 — không thay đổi">${invUnit}</span>
-          ${btUnit ? '<span style="color:var(--text3);font-size:10px;margin:0 2px">↔</span>' : ''}
-          ${badgeBt}
+          ${compareUnit ? '<span style="color:var(--text3);font-size:10px;margin:0 2px">↔</span>' : ''}
+          ${badgeCompare}
         </div>
         <div>${statusHtml}</div>
         ${needSelect ? `
@@ -762,10 +875,14 @@ function renderTable(){
     const hsCell=item.hs_code
       ?`<span class="hs-link hs-jump" data-code="${item.hs_code}">${item.hs_code}</span>`
       :'<span style="color:var(--text4)">—</span>';
+    const tenViet=item.ten_viet
+      ?`<span style="font-family:'Be Vietnam Pro',sans-serif;font-size:11px;color:var(--text2)">${item.ten_viet}</span>`
+      :'<span style="color:var(--text4)">—</span>';
     html+=`<tr>
       <td class="td-idx">${i+1}</td>
       <td class="td-code">${item.item_code}</td>
       <td class="td-desc">${item.description}</td>
+      <td class="td-desc">${tenViet}</td>
       <td>${hsCell}</td>
       <td class="td-num">${fmt(item.qty)}</td>
       <td class="td-unit">${item.unit}</td>
@@ -776,7 +893,7 @@ function renderTable(){
       <td class="td-rate">${chip(rec?rec.vat:'')}</td>
       <td class="td-rate">${chip(rec?rec.evfta:'')}</td>
       <td class="td-rate">${chip(rec?rec.cptpp:'')}</td>
-      ${unitCell(i, item.unit, rec)}
+      ${unitCell(i, item.unit, rec, item.dvt2)}
       <td>${rec?`<button class="btn btn-outline hs-jump" style="padding:2px 7px;font-size:10px" data-code="${item.hs_code}">→</button>`:''}</td>
     </tr>`;
   });
@@ -994,21 +1111,21 @@ function exportBook1(){
 function exportEnriched(){
   if(!invoiceData) return;
   const wb=XLSX.utils.book_new();
-  const hdrs=['#','Item No.','Mô tả','HS Code',
+  const hdrs=['#','Item No.','Mô tả (EN)','Tên tiếng Việt','HS Code',
     'SL','ĐVT1 (Invoice — không đổi)','SL2','ĐVT2 (export)',
     'ĐVT Biểu Thuế','Trạng thái ĐVT',
     'Đơn giá','Thành tiền',
     'NK TT%','MFN%','VAT%','EVFTA%','CPTPP%','ATIGA%','Chính sách'];
   const rows=invoiceData.items.map((it,i)=>{
     const rec=tariffMap&&it.hs_code?tariffMap.get(it.hs_code):null;
-    const btUnit=rec?(rec.don_vi_tinh||rec.unit_of_qty||''):'';
-    const status=rec?compareUnits(it.unit,btUnit):'';
+    const btUnit=rec?(rec.don_vi_tinh||rec.unit_of_qty||''):(it.dvt2||'');
+    const status=btUnit?compareUnits(it.unit,btUnit):'';
     const statusLabel={'exact':'Khớp','equiv':'Tương đương','diff':'Khác nhau','unknown':'Chưa rõ','':''};
-    const unit1 = it.unit;                                                     // ĐVT1: không đổi
-    const unit2 = unitOverrides[i]!==undefined ? unitOverrides[i] : it.unit;  // ĐVT2: có thể override
-    return[i+1, it.item_code, it.description, it.hs_code||'',
-      it.qty, unit1,          // SL + ĐVT1
-      it.qty, unit2,          // SL2 + ĐVT2
+    const unit1 = it.unit;
+    const unit2 = unitOverrides[i]!==undefined ? unitOverrides[i] : it.unit;
+    return[i+1, it.item_code, it.description, it.ten_viet||'', it.hs_code||'',
+      it.qty, unit1,
+      it.qty, unit2,
       btUnit, statusLabel[status]||'',
       it.unit_price, it.amount,
       rec?.thue_nk_tt||'', rec?.thue_nk_uu_dai||'', rec?.vat||'',
@@ -1016,12 +1133,11 @@ function exportEnriched(){
       rec?.chinh_sach||''];
   });
   const ws=XLSX.utils.aoa_to_sheet([hdrs,...rows]);
-  ws['!cols']=[{wch:4},{wch:16},{wch:46},{wch:12},
+  ws['!cols']=[{wch:4},{wch:16},{wch:46},{wch:36},{wch:12},
     {wch:8},{wch:20},{wch:8},{wch:14},
     {wch:14},{wch:14},
     {wch:12},{wch:14},
     {wch:9},{wch:9},{wch:8},{wch:9},{wch:9},{wch:9},{wch:50}];
-  XLSX.utils.book_append_sheet(wb,ws,'Invoice+Tariff');
   XLSX.writeFile(wb,'invoice_full_'+(invoiceData.header.invoiceNo||'invoice')+'.xlsx');
 }
 
