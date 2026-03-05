@@ -209,6 +209,50 @@
     .empty-sub{font-size:11px}
     .err-box{padding:10px 14px;background:var(--red-dim);border:1px solid #4a1a1a;border-radius:4px;color:var(--red);font-size:11px;margin-top:8px}
     .note-sm{font-size:10px;color:var(--text3);margin-top:7px}
+
+    /* TỜ KHAI styles */
+    .tk-upload-row{display:flex;align-items:flex-end;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+    .tk-sheet-input{
+      background:var(--bg2);border:1px solid var(--border2);border-radius:5px;
+      color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:12px;
+      padding:8px 12px;outline:none;width:180px;
+    }
+    .tk-sheet-input:focus{border-color:var(--blue)}
+    .tk-sheet-label{font-size:9px;letter-spacing:.12em;color:var(--text3);text-transform:uppercase;margin-bottom:5px}
+    .tk-group{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:18px 20px;margin-bottom:14px}
+    .tk-group-title{font-size:9px;letter-spacing:.15em;color:var(--blue);text-transform:uppercase;font-weight:700;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+    .tk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+    .tk-grid-wide{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
+    .tk-field{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:9px 13px}
+    .tk-lbl{font-size:9px;color:var(--text3);letter-spacing:.05em;margin-bottom:4px;line-height:1.3}
+    .tk-val{font-size:12px;font-weight:600;color:var(--text);word-break:break-word;font-family:'IBM Plex Mono',monospace}
+    .tk-val.vn{font-family:'Be Vietnam Pro',sans-serif;font-size:12px}
+    .tk-val.accent{color:var(--blue)}
+    .tk-val.amber{color:var(--amber)}
+    .tk-val.green{color:var(--green)}
+    .tk-val.dim{color:var(--text3);font-size:11px;font-weight:400}
+    .tk-badge{display:inline-block;padding:1px 8px;border-radius:2px;font-size:10px;font-weight:700;background:var(--blue-dim);color:var(--blue);margin-right:5px;letter-spacing:.05em}
+    .tk-badge.amber{background:var(--amber-dim);color:var(--amber)}
+    .tk-badge.green{background:var(--green-dim);color:var(--green)}
+    /* Hàng hóa list */
+    .tk-items{display:flex;flex-direction:column;gap:8px}
+    .tk-item{background:var(--bg3);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+    .tk-item-hdr{display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .12s}
+    .tk-item-hdr:hover{background:var(--bg2)}
+    .tk-item-num{width:28px;height:28px;border-radius:4px;background:var(--blue-dim);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+    .tk-item-hs{font-size:12px;font-weight:700;color:var(--purple);letter-spacing:.05em;min-width:80px}
+    .tk-item-desc{font-size:11px;color:var(--text2);font-family:'Be Vietnam Pro',sans-serif;flex:1;line-height:1.4}
+    .tk-item-val{font-size:12px;font-weight:600;color:var(--green);text-align:right;white-space:nowrap}
+    .tk-item-body{padding:12px 14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+    .tk-item-body.hidden{display:none}
+    .tk-chevron{font-size:10px;color:var(--text3);transition:transform .15s;flex-shrink:0}
+    .tk-chevron.open{transform:rotate(180deg)}
+    /* Summary bar */
+    .tk-summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+    .tk-sum-card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px 16px;min-width:130px}
+    .tk-sum-lbl{font-size:9px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+    .tk-sum-val{font-size:16px;font-weight:700;color:var(--text)}
+    .tk-sum-val.b{color:var(--blue)}.tk-sum-val.g{color:var(--green)}.tk-sum-val.a{color:var(--amber)}
   </style>
 </head>
 <body>
@@ -223,6 +267,10 @@
   <button class="tab" onclick="switchTab('tariff')">
     🔍 TRA BIỂU THUẾ
     <span class="tbadge g" id="tb-tar" style="display:none"></span>
+  </button>
+  <button class="tab" onclick="switchTab('tokhai')">
+    📋 TỜ KHAI HẢI QUAN
+    <span class="tbadge" id="tb-tk" style="display:none"></span>
   </button>
 </nav>
 
@@ -396,6 +444,94 @@
 </div>
 
 
+<!-- ════ TAB 3: TỜ KHAI HẢI QUAN ════ -->
+<div class="panel" id="panel-tokhai">
+
+  <!-- Upload row -->
+  <div class="tk-upload-row">
+    <!-- File drop zone -->
+    <div style="flex:1;min-width:220px">
+      <div class="tk-sheet-label">File tờ khai (.xls)</div>
+      <div class="uz done" id="uz-tk" style="height:52px;display:flex;align-items:center;gap:10px;padding:0 16px"
+        ondragover="dzOver(event,'uz-tk')" ondragleave="dzOut('uz-tk')" ondrop="tkDrop(event)">
+        <span id="uzi-tk">📋</span>
+        <span id="uzt-tk" style="font-size:11px">Kéo thả file .xls tờ khai Hải quan</span>
+        <input type="file" accept=".xls,.xlsx" onchange="tkHandle(event)" style="display:none" id="f-tk">
+        <button class="btn btn-outline" style="margin-left:auto;white-space:nowrap" onclick="document.getElementById('f-tk').click()">Chọn file</button>
+      </div>
+    </div>
+    <!-- Sheet name input -->
+    <div>
+      <div class="tk-sheet-label">Tên sheet (để trống = tự động)</div>
+      <input class="tk-sheet-input" id="tk-sheet-name" type="text" placeholder="vd: Tokhaixuat02" />
+    </div>
+    <!-- Load button -->
+    <button class="btn btn-primary" onclick="loadToKhai()" style="height:38px;white-space:nowrap">⟳ Đọc tờ khai</button>
+    <button class="btn btn-danger" onclick="clearToKhai()" style="height:38px">✕</button>
+  </div>
+  <div class="err-box" id="err-tk" style="display:none"></div>
+
+  <!-- Empty state -->
+  <div class="empty" id="tk-empty">
+    <div class="empty-icon">📋</div>
+    <div class="empty-title">Chưa tải tờ khai Hải quan</div>
+    <div class="empty-sub">Hỗ trợ file .xls xuất từ hệ thống VNACCS / VCIS</div>
+  </div>
+
+  <!-- Results -->
+  <div id="tk-results" style="display:none">
+
+    <!-- Summary cards -->
+    <div class="tk-summary" id="tk-summary"></div>
+
+    <!-- Group 1: Thông tin tờ khai -->
+    <div class="tk-group">
+      <div class="tk-group-title">🗂 Thông tin tờ khai</div>
+      <div class="tk-grid" id="tk-info-grid"></div>
+    </div>
+
+    <!-- Group 2: Bên xuất khẩu -->
+    <div class="tk-group">
+      <div class="tk-group-title">🏭 Bên xuất khẩu (Người khai / Người xuất)</div>
+      <div class="tk-grid-wide" id="tk-xuat-grid"></div>
+    </div>
+
+    <!-- Group 3: Bên nhập khẩu -->
+    <div class="tk-group">
+      <div class="tk-group-title">🏢 Bên nhập khẩu</div>
+      <div class="tk-grid-wide" id="tk-nhap-grid"></div>
+    </div>
+
+    <!-- Group 4: Vận chuyển & Hàng hóa chung -->
+    <div class="tk-group">
+      <div class="tk-group-title">🚚 Vận chuyển & Hàng hóa chung</div>
+      <div class="tk-grid" id="tk-van-grid"></div>
+    </div>
+
+    <!-- Group 5: Thanh toán & Trị giá -->
+    <div class="tk-group">
+      <div class="tk-group-title">💰 Thanh toán & Trị giá</div>
+      <div class="tk-grid" id="tk-tt-grid"></div>
+    </div>
+
+    <!-- Group 6: Danh sách hàng hóa -->
+    <div class="tk-group">
+      <div class="tk-group-title">📦 Danh sách hàng hóa
+        <span class="tk-badge" id="tk-item-count"></span>
+      </div>
+      <div class="tk-items" id="tk-items-list"></div>
+    </div>
+
+    <!-- Group 7: Ghi chú & Phân loại -->
+    <div class="tk-group" id="tk-extra-group">
+      <div class="tk-group-title">📝 Ghi chú & Thông tin bổ sung</div>
+      <div class="tk-grid-wide" id="tk-extra-grid"></div>
+    </div>
+
+  </div>
+</div>
+
+
 <script>
 // ═══════════════════════════════════════════
 // STATE
@@ -544,7 +680,8 @@ const FTA = [
 // TAB
 // ═══════════════════════════════════════════
 function switchTab(t) {
-  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', ['invoice','tariff'][i]===t));
+  const TABS = ['invoice','tariff','tokhai'];
+  document.querySelectorAll('.tab').forEach((el,i) => el.classList.toggle('active', TABS[i]===t));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-'+t).classList.add('active');
   document.getElementById('step-bar').style.display = t==='invoice' ? 'flex' : 'none';
@@ -753,14 +890,22 @@ function parseInvoice(wb){
   // ── Đọc dòng hàng hóa ──
   const items=[];
   const STOP=/^(total|tổng|tong|grand|subtotal|signed|ghi chú)/i;
-  const startRow=headerRow+1;
+  // Bỏ qua sub-header rows sau headerRow (dòng chỉ chứa label, không có item code)
+  let startRow=headerRow+1;
+  for(let r=startRow; r<=Math.min(startRow+5, rng.e.r); r++){
+    const cell=ws[XLSX.utils.encode_cell({r, c:colMap.itemNo!==-1?colMap.itemNo:2})];
+    if(!cell||!cell.v) continue;
+    const v=String(cell.v).trim();
+    // Dữ liệu thật: số nguyên STT hoặc mã hàng dạng chữ-số
+    if(/^\d+$/.test(v) || /^[A-Z]{2}\d/.test(v) || v.length>4){ startRow=r; break; }
+  }
+
   for(let r=startRow;r<=rng.e.r;r++){
     const rv=c=>grc(r,c);
     const rawCode=colMap.itemNo!==-1?rv(colMap.itemNo):'';
     const itemCode=String(rawCode).trim();
     if(!itemCode) continue;
     if(STOP.test(itemCode)) break;
-    // Bỏ qua STT thuần (số nguyên 1-999)
     const desc=colMap.desc!==-1?String(rv(colMap.desc)).trim():'';
     if(!desc&&/^\d{1,3}$/.test(itemCode)) continue;
 
@@ -769,17 +914,33 @@ function parseInvoice(wb){
     const uprice =colMap.uprice !==-1?rv(colMap.uprice):'';
     const amount =colMap.amount !==-1?rv(colMap.amount):(Number(qty)*Number(uprice)||'');
 
-    // HS Code: ưu tiên từ cột trong INVOICE, sau đó từ hsMap
+    // HS Code từ cột detect được trong INVOICE
     let hsCode='', tenViet='', dvt2='';
     if(colMap.hsCode!==-1){
-      const raw=String(rv(colMap.hsCode)).replace(/\.0$/,'').trim();
+      const raw=String(rv(colMap.hsCode)).replace(/\.0$/,'').replace(/\s/g,'');
       if(/^\d{6,10}$/.test(raw)) hsCode=raw;
     }
+    // Tên VN từ cột tenViet (nếu detect được), hoặc từ cột sau hsCode
+    if(colMap.tenViet!==-1){
+      tenViet=String(rv(colMap.tenViet)).trim();
+    } else if(colMap.hsCode!==-1){
+      // Thử cột kề bên phải cột hsCode — thường chứa tên VN đầy đủ
+      const rawTen=String(rv(colMap.hsCode+1)).trim();
+      if(rawTen.length>5 && !/^\d+$/.test(rawTen)) tenViet=rawTen;
+    }
+
+    // Từ sheet hs code (nếu có)
     const hsRec=hsMap.get(itemCode);
     if(hsRec){
       if(!hsCode) hsCode=hsRec.hs_code;
-      tenViet=hsRec.ten_viet;
+      if(!tenViet) tenViet=hsRec.ten_viet;
       dvt2=hsRec.dvt2;
+    }
+
+    // Fallback: tách tên VN từ desc nếu có dạng "TÊN VN/ENGLISH NAME"
+    if(!tenViet && desc.includes('/')){
+      const vn=desc.split('/')[0].trim();
+      if(/[^\x00-\x7F]/.test(vn)) tenViet=vn; // chứa ký tự không phải ASCII = tiếng Việt
     }
 
     items.push({
@@ -1171,6 +1332,363 @@ function setUZ(which,state,title){
   if(zone){zone.className='uz';if(state) zone.classList.add(state==='done'?'done':state==='err'?'err':'');}
 }
 
+// ═══════════════════════════════════════════
+// TỜ KHAI HẢI QUAN — XLS BIFF8 PARSER
+// ═══════════════════════════════════════════
+let toKhaiData = null;
+
+function tkHandle(e){ const f=e.target.files[0]; if(f) startLoadTK(f); }
+function tkDrop(e){
+  e.preventDefault(); dzOut('uz-tk');
+  const f=e.dataTransfer.files[0]; if(f) startLoadTK(f);
+}
+function clearToKhai(){
+  toKhaiData=null;
+  document.getElementById('f-tk').value='';
+  document.getElementById('uzi-tk').textContent='📋';
+  document.getElementById('uzt-tk').textContent='Kéo thả file .xls tờ khai Hải quan';
+  document.getElementById('uzt-tk').style.color='';
+  document.getElementById('tb-tk').style.display='none';
+  hide('tk-results'); show('tk-empty'); hide('err-tk');
+}
+function startLoadTK(file){
+  document.getElementById('uzi-tk').textContent='⟳';
+  document.getElementById('uzt-tk').textContent='Đang đọc...';
+  document.getElementById('uzt-tk').style.color='var(--amber)';
+  hide('err-tk');
+  const r=new FileReader();
+  r.onload=ev=>{ try{ loadToKhai(new Uint8Array(ev.target.result), file.name); }
+    catch(err){ showTKErr(err.message); } };
+  r.readAsArrayBuffer(file);
+}
+function loadToKhai(rawOrNull, fname){
+  if(rawOrNull instanceof Uint8Array){ window._tkRaw=rawOrNull; window._tkFname=fname; }
+  const raw=window._tkRaw;
+  if(!raw){ showTKErr('Chưa chọn file.'); return; }
+  const sheetHint=document.getElementById('tk-sheet-name').value.trim();
+  try{
+    toKhaiData=parseBIFF8(raw, sheetHint);
+    renderToKhai();
+    const fn=window._tkFname||'';
+    document.getElementById('uzi-tk').textContent='✅';
+    document.getElementById('uzt-tk').textContent='✓ '+fn;
+    document.getElementById('uzt-tk').style.color='var(--green)';
+    const badge=document.getElementById('tb-tk');
+    badge.textContent=toKhaiData.items.length+' hàng';
+    badge.style.display='inline';
+  }catch(err){ showTKErr(err.message); }
+}
+function showTKErr(msg){
+  document.getElementById('uzi-tk').textContent='❌';
+  document.getElementById('uzt-tk').textContent='Lỗi đọc file';
+  document.getElementById('uzt-tk').style.color='var(--red)';
+  const el=document.getElementById('err-tk');
+  el.textContent='Lỗi: '+msg; el.style.display='block';
+  hide('tk-results'); show('tk-empty');
+}
+
+function parseBIFF8(uint8, sheetHint){
+  const dv=new DataView(uint8.buffer,uint8.byteOffset,uint8.byteLength);
+  const u8=uint8;
+  const sectorSize=1<<dv.getUint16(0x1e,true);
+  const rootStart=dv.getUint32(0x30,true);
+  const fat=[];
+  for(let i=0;i<109;i++){
+    const s=dv.getUint32(0x4c+i*4,true);
+    if(s>=0xFFFFFFFC) break;
+    const off=512+s*sectorSize;
+    for(let j=0;j<sectorSize/4;j++) fat.push(dv.getUint32(off+j*4,true));
+  }
+  function readStream(start,limit=Infinity){
+    const chunks=[];let s=start,total=0;
+    while(s<0xFFFFFFFE&&total<limit){
+      const off=512+s*sectorSize;
+      chunks.push(u8.slice(off,off+sectorSize));
+      total+=sectorSize;
+      s=fat[s]??0xFFFFFFFE;
+    }
+    const out=new Uint8Array(total);
+    let p=0;for(const c of chunks){out.set(c,p);p+=c.length;}
+    return new DataView(out.buffer);
+  }
+  const dirDV=readStream(rootStart);
+  let wbStart=-1,wbSize=0;
+  for(let i=0;i<dirDV.byteLength/128;i++){
+    const base=i*128;
+    const nlen=dirDV.getUint16(base+0x40,true);
+    let name='';
+    for(let j=0;j<Math.max(0,nlen-2);j+=2) name+=String.fromCharCode(dirDV.getUint16(base+j,true));
+    if(name==='Workbook'||name==='Book'){
+      wbStart=dirDV.getUint32(base+0x74,true);
+      wbSize=dirDV.getUint32(base+0x78,true);
+      break;
+    }
+  }
+  if(wbStart<0) throw new Error('Không tìm thấy Workbook stream trong file');
+  const wb=readStream(wbStart,wbSize);
+  const utf16=(dv2,off,len)=>{let s='';for(let i=0;i<len;i++)s+=String.fromCharCode(dv2.getUint16(off+i*2,true));return s;};
+  const latin1=(dv2,off,len)=>{let s='';for(let i=0;i<len;i++)s+=String.fromCharCode(dv2.getUint8(off+i));return s;};
+
+  // Parse all records
+  const records=[];
+  {let pos=0;while(pos+4<=wb.byteLength){const rt=wb.getUint16(pos,true),rl=wb.getUint16(pos+2,true);records.push({rt,rl,off:pos+4});pos+=4+rl;}}
+
+  // SST
+  const sst=[];
+  for(const {rt,rl,off} of records){
+    if(rt!==0x00FC) continue;
+    const cnt=wb.getUint32(off+4,true);
+    let p=off+8;
+    for(let s=0;s<cnt&&p<off+rl;s++){
+      try{
+        const slen=wb.getUint16(p,true);
+        const flg=wb.getUint8(p+2);p+=3;
+        const hasRich=!!(flg&8),hasExt=!!(flg&4),isUni=!!(flg&1);
+        let rt2=0,el=0;
+        if(hasRich){rt2=wb.getUint16(p,true);p+=2;}
+        if(hasExt){el=wb.getUint32(p,true);p+=4;}
+        const txt=isUni?utf16(wb,p,slen):latin1(wb,p,slen);
+        p+=slen*(isUni?2:1)+rt2*4+el;
+        sst.push(txt);
+      }catch{sst.push('');break;}
+    }
+    break;
+  }
+
+  // Sheet defs
+  const sheetDefs=[];
+  for(const {rt,rl,off} of records){
+    if(rt===0x0085&&rl>=6){
+      const nlen=wb.getUint8(off+4),flg=wb.getUint8(off+5);
+      const isUni=!!(flg&1);
+      const name=isUni?utf16(wb,off+6,nlen):latin1(wb,off+6,nlen);
+      sheetDefs.push({name});
+    }
+  }
+  const sheetNames=sheetDefs.map((s,i)=>s.name||('('+i+')'));
+
+  // Pick target sheet
+  let targetSheet=0;
+  if(sheetHint){
+    const idx=sheetDefs.findIndex(s=>s.name.toLowerCase()===sheetHint.toLowerCase());
+    if(idx<0) throw new Error('Không tìm thấy sheet "'+sheetHint+'". Có: '+sheetNames.join(', '));
+    targetSheet=idx;
+  }
+
+  // Parse cells
+  const cells=new Map();
+  let inTarget=false,sheetIdx=-1;
+  for(const {rt,rl,off} of records){
+    if(rt===0x0809){sheetIdx++;inTarget=(sheetIdx===targetSheet);continue;}
+    if(rt===0x000A){inTarget=false;continue;}
+    if(!inTarget||rl<4) continue;
+    const row=wb.getUint16(off,true),col=wb.getUint16(off+2,true),key=row+','+col;
+    if(rt===0x00FD&&rl>=10){const idx=wb.getUint32(off+6,true);if(idx<sst.length)cells.set(key,sst[idx]);}
+    else if(rt===0x0203&&rl>=14){cells.set(key,wb.getFloat64(off+6,true));}
+    else if(rt===0x027E&&rl>=10){
+      let rk=wb.getUint32(off+6,true),v;
+      if(rk&2){v=(rk>>2);}else{const b=new ArrayBuffer(8);new DataView(b).setUint32(4,rk&0xFFFFFFFC,true);v=new DataView(b).getFloat64(0,true);}
+      if(rk&1)v/=100;cells.set(key,v);
+    }
+    else if((rt===0x0027||rt===0x0207)&&rl>=8){try{cells.set(key,latin1(wb,off+8,wb.getUint16(off+6,true)));}catch{}}
+  }
+
+  const gc=(r,c)=>{const v=cells.get(r+','+c);return v!=null?String(v).trim():'';};
+  const getV=(row,cols)=>{for(const c of cols){const v=gc(row,c);if(v)return v;}return '';};
+
+  // Find base row (first "Số tờ khai" label)
+  let baseRow=0;
+  cells.forEach((v,k)=>{if(String(v).trim()==='Số tờ khai'&&!baseRow)baseRow=parseInt(k.split(',')[0]);});
+  const r=baseRow;
+
+  // Extract header info
+  const soToKhai=String(gc(r,4)||gc(r,5)||0).replace(/\.0$/,'');
+  const maLoaiHinh=getV(r+2,[11,12]);
+  const maPhanLoai=getV(r+2,[5,6]);
+  const coQuanHQ=getV(r+3,[9,10]);
+  const maBoPhan=getV(r+3,[24,25]);
+  const maSoThue=getV(r+2,[24,25]);
+  const ngayDangKy=getV(r+4,[5,6]);
+  // Xuất khẩu
+  const xkMa=getV(r+9,[5,6]),xkTen=getV(r+10,[5,6]),xkDC=getV(r+13,[5,6]),xkTel=getV(r+15,[5,6]);
+  // Nhập khẩu
+  const nkMa=getV(r+16,[5,6]),nkTen=getV(r+17,[5,6]);
+  const nkDC=[getV(r+20,[5,6]),gc(r+20,17),gc(r+21,5),gc(r+22,5)].filter(x=>x&&x!=='VN').join(', ');
+  const nkNuoc=getV(r+22,[5,6]);
+  // Vận chuyển
+  const soVanDon=getV(r+26,[7,8]);
+  const slKien=getV(r+27,[7,8]),dvtKien=getV(r+27,[12,13]);
+  const trongLuong=getV(r+28,[7,8]),dvtTL=getV(r+28,[12,13]);
+  const diaDiemLK=getV(r+29,[8,9]),tenKho=getV(r+29,[12,13]);
+  const ptVC=getV(r+32,[8,9,12,13]),ngayDi=getV(r+33,[8,9]);
+  const diaXep=getV(r+31,[8,9,12,13]);
+  // Hóa đơn
+  const soHD=[getV(r+36,[15,16]),getV(r+36,[17]),getV(r+36,[18])].filter(Boolean).join('-');
+  const ngayHD=getV(r+38,[18,19]);
+  const ptTT=getV(r+39,[18,19]);
+  const tongTG=getV(r+40,[20,21]);
+  const dkGia=getV(r+40,[16,17]);
+  // Ghi chú & Hải quan
+  const ghiChu=getV(r+51,[5,6]);
+  const soNB=getV(r+53,[8,9]);
+  const truongHQ=getV(r+57,[8,9]);
+  const ngayHT=getV(r+58,[8,9]);
+  const ddbaoThue=getV(r+65,[10,11]);
+
+  // Items: scan for <01> <02> markers
+  const items=[];
+  cells.forEach((v,k)=>{
+    const vs=String(v).trim();
+    if(!/^<\d{2}>$/.test(vs)) return;
+    const ir=parseInt(k.split(',')[0]);
+    const hsCode=getV(ir+2,[5,6]);
+    const rawDesc=getV(ir+3,[5,6]);
+    let maHH='',tenVN='',tenEN='';
+    if(rawDesc.includes('#&')){
+      const pts=rawDesc.split('#&');
+      maHH=pts[0].trim();
+      const nm=pts[1]||'';
+      const sp=nm.indexOf('/');
+      if(sp>-1){tenVN=nm.slice(0,sp).trim();tenEN=nm.slice(sp+1).trim();}else tenVN=nm.trim();
+    }else tenVN=rawDesc;
+    items.push({
+      stt:vs,hs_code:hsCode,ma_hh:maHH,ten_vn:tenVN,ten_en:tenEN,
+      sl1:getV(ir+6,[16,17]),dvt1:getV(ir+6,[24,25]),
+      sl2:getV(ir+7,[16,17]),dvt2:getV(ir+7,[24,25]),
+      tri_gia:getV(ir+8,[5,6]),don_gia:getV(ir+8,[17,18]),dvt_tg:getV(ir+8,[22,23]),
+      thue_suat:getV(ir+12,[5,6]),so_tien_thue:getV(ir+13,[11,12]),
+      mien_giam:getV(ir+14,[11,12]),danh_muc:getV(ir+16,[7,8])
+    });
+  });
+  items.sort((a,b)=>a.stt.localeCompare(b.stt));
+
+  return {
+    sheetNames,so_to_khai:soToKhai,ma_loai_hinh:maLoaiHinh,ma_phan_loai:maPhanLoai,
+    co_quan_hq:coQuanHQ,ma_bo_phan:maBoPhan,ma_so_thue_dd:maSoThue,ngay_dang_ky:ngayDangKy,
+    xuat:{ma:xkMa,ten:xkTen,dia_chi:xkDC,sdt:xkTel},
+    nhap:{ma:nkMa,ten:nkTen,dia_chi:nkDC,quoc_gia:nkNuoc},
+    van_chuyen:{so_van_don:soVanDon,so_kien:slKien,dvt_kien:dvtKien,trong_luong:trongLuong,dvt_tl:dvtTL,dia_diem_lk:diaDiemLK,ten_kho:tenKho,phuong_tien:ptVC,ngay_di:ngayDi,dia_xep_hang:diaXep},
+    hoa_don:{so:soHD,ngay:ngayHD,pt_thanh_toan:ptTT,tong_tri_gia:tongTG,dieu_kien:dkGia},
+    ghi_chu:ghiChu,so_nb:soNB,
+    hai_quan:{truong_hq:truongHQ,ngay_hoan_thanh:ngayHT,dia_diem_bao_thue:ddbaoThue},
+    items,tong_dong:items.length
+  };
+}
+
+function fv(val,cls=''){
+  const v=String(val||'').trim();
+  if(!v||v==='-'||/^\/+\s*\//.test(v)) return '<span class="tk-val dim">—</span>';
+  return '<span class="tk-val'+(cls?' '+cls:'')+'">'+v+'</span>';
+}
+function tkField(label,val,cls=''){ return '<div class="tk-field"><div class="tk-lbl">'+label+'</div>'+fv(val,cls)+'</div>'; }
+function setGrid(id,html){ document.getElementById(id).innerHTML=html; }
+
+function renderToKhai(){
+  const d=toKhaiData;
+  hide('tk-empty'); show('tk-results');
+  // Summary
+  document.getElementById('tk-summary').innerHTML=`
+    <div class="tk-sum-card"><div class="tk-sum-lbl">Số tờ khai</div><div class="tk-sum-val b" style="font-size:11px;letter-spacing:.05em">${d.so_to_khai||'—'}</div></div>
+    <div class="tk-sum-card"><div class="tk-sum-lbl">Mã loại hình</div><div class="tk-sum-val a">${d.ma_loai_hinh||'—'}</div></div>
+    <div class="tk-sum-card"><div class="tk-sum-lbl">Số dòng hàng</div><div class="tk-sum-val g">${d.tong_dong}</div></div>
+    <div class="tk-sum-card"><div class="tk-sum-lbl">Tổng trị giá</div><div class="tk-sum-val" style="font-size:12px">${d.hoa_don.tong_tri_gia||'—'}</div></div>
+    <div class="tk-sum-card"><div class="tk-sum-lbl">Ngày đăng ký</div><div class="tk-sum-val" style="font-size:12px">${d.ngay_dang_ky||'—'}</div></div>
+    <div class="tk-sum-card"><div class="tk-sum-lbl">Sheets trong file</div><div class="tk-sum-val" style="font-size:10px;color:var(--text2);letter-spacing:0">${d.sheetNames.join(' · ')||'—'}</div></div>
+  `;
+  // Info
+  setGrid('tk-info-grid',[
+    tkField('Số tờ khai',d.so_to_khai,'accent'),
+    tkField('Mã loại hình',d.ma_loai_hinh,'amber'),
+    tkField('Mã phân loại kiểm tra',d.ma_phan_loai),
+    tkField('Cơ quan Hải quan tiếp nhận',d.co_quan_hq),
+    tkField('Mã bộ phận xử lý',d.ma_bo_phan),
+    tkField('Mã số thuế đại diện',d.ma_so_thue_dd),
+    tkField('Ngày đăng ký',d.ngay_dang_ky,'green'),
+    tkField('Trưởng đơn vị HQ',d.hai_quan.truong_hq),
+    tkField('Ngày hoàn thành kiểm tra',d.hai_quan.ngay_hoan_thanh),
+    tkField('Địa điểm đích bảo thuế',d.hai_quan.dia_diem_bao_thue),
+  ].join(''));
+  // Xuất
+  setGrid('tk-xuat-grid',[
+    tkField('Mã số thuế',d.xuat.ma,'accent'),
+    tkField('Tên doanh nghiệp',d.xuat.ten,'vn'),
+    tkField('Địa chỉ',d.xuat.dia_chi,'vn'),
+    tkField('Số điện thoại',d.xuat.sdt),
+  ].join(''));
+  // Nhập
+  setGrid('tk-nhap-grid',[
+    tkField('Mã số thuế',d.nhap.ma||'(KCX — không có MST)','accent'),
+    tkField('Tên doanh nghiệp',d.nhap.ten,'vn'),
+    tkField('Địa chỉ',d.nhap.dia_chi,'vn'),
+    tkField('Mã quốc gia',d.nhap.quoc_gia),
+  ].join(''));
+  // Vận chuyển
+  const vc=d.van_chuyen;
+  setGrid('tk-van-grid',[
+    tkField('Số vận đơn',vc.so_van_don),
+    tkField('Số lượng kiện',(vc.so_kien+' '+vc.dvt_kien).trim()),
+    tkField('Trọng lượng (Gross)',(vc.trong_luong+' '+vc.dvt_tl).trim()),
+    tkField('Địa điểm lưu kho',vc.dia_diem_lk),
+    tkField('Chi cục HQ giám sát',vc.ten_kho,'vn'),
+    tkField('Phương tiện vận chuyển',vc.phuong_tien),
+    tkField('Ngày hàng đi dự kiến',vc.ngay_di),
+    tkField('Địa điểm xếp hàng',vc.dia_xep_hang,'vn'),
+  ].join(''));
+  // Thanh toán
+  const hd=d.hoa_don;
+  setGrid('tk-tt-grid',[
+    tkField('Số hóa đơn',hd.so,'accent'),
+    tkField('Ngày phát hành',hd.ngay),
+    tkField('Điều kiện giao hàng',hd.dieu_kien,'amber'),
+    tkField('Phương thức thanh toán',hd.pt_thanh_toan),
+    tkField('Tổng trị giá hóa đơn',hd.tong_tri_gia,'green'),
+  ].join(''));
+  // Items
+  document.getElementById('tk-item-count').textContent=d.items.length+' dòng';
+  const ihtml=d.items.map((it,idx)=>{
+    const sttNum=it.stt.replace(/[<>]/g,'');
+    return `<div class="tk-item">
+      <div class="tk-item-hdr" onclick="tkToggleItem(${idx})">
+        <div class="tk-item-num">${sttNum}</div>
+        <div class="tk-item-hs">${it.hs_code||'—'}</div>
+        <div class="tk-item-desc">${it.ten_vn||it.ten_en||it.ma_hh||'—'}${it.ma_hh?'<br><span style="color:var(--text3);font-size:10px;font-family:IBM Plex Mono,monospace">'+it.ma_hh+'</span>':''}</div>
+        <div class="tk-item-val">${it.tri_gia||'—'} <span style="font-size:9px;color:var(--text3)">${it.dvt_tg||'VND'}</span></div>
+        <div class="tk-chevron" id="tkchev-${idx}">▼</div>
+      </div>
+      <div class="tk-item-body hidden" id="tkbody-${idx}">
+        ${tkField('Mã HS',it.hs_code,'accent')}
+        ${tkField('Mã hàng hóa',it.ma_hh)}
+        ${tkField('Tên tiếng Việt',it.ten_vn,'vn')}
+        ${tkField('Tên tiếng Anh',it.ten_en)}
+        ${tkField('Số lượng (1)',(it.sl1+' '+it.dvt1).trim(),'green')}
+        ${tkField('Số lượng (2)',(it.sl2+' '+it.dvt2).trim())}
+        ${tkField('Trị giá hóa đơn',it.tri_gia,'green')}
+        ${tkField('Đơn giá',(it.don_gia+' '+it.dvt_tg).trim())}
+        ${tkField('Thuế suất',it.thue_suat)}
+        ${tkField('Số tiền thuế',it.so_tien_thue)}
+        ${tkField('Số tiền miễn giảm',it.mien_giam)}
+        ${tkField('Danh mục miễn thuế',it.danh_muc)}
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('tk-items-list').innerHTML=ihtml||'<div class="empty" style="padding:20px">Không có dòng hàng</div>';
+  // Extra
+  setGrid('tk-extra-grid',[
+    tkField('Ghi chú',d.ghi_chu,'vn'),
+    tkField('Số quản lý nội bộ DN',d.so_nb),
+    tkField('Số quản lý người dùng',d.so_nb),
+  ].join(''));
+}
+
+function tkToggleItem(idx){
+  const body=document.getElementById('tkbody-'+idx);
+  const chev=document.getElementById('tkchev-'+idx);
+  const isHidden=body.classList.contains('hidden');
+  body.classList.toggle('hidden',!isHidden);
+  chev.classList.toggle('open',isHidden);
+}
+
+// ─────────────────────────────────────────────
 updateSteps();
 </script>
 
