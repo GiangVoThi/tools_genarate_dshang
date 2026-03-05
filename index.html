@@ -23,11 +23,10 @@
     ::-webkit-scrollbar-track{background:var(--bg2)}
     ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
-    /* NAV */ 
+    /* NAV */
     #nav {
       display:flex; align-items:stretch; border-bottom:1px solid var(--border);
       background:var(--bg2); padding:0 24px; position:sticky; top:0; z-index:100;
-      
     }
     .nav-logo {
       font-size:11px; letter-spacing:.15em; color:var(--text3);
@@ -812,34 +811,64 @@ function parseInvoice(wb){
     if(invoiceNo && date && terms) break;
   }
 
-  // ── Tìm header row của bảng hàng hóa ──
+  // ── Tìm header row và map cột (hỗ trợ header 2 dòng) ──
+  // colMap lưu vị trí cột (0-indexed) cho từng trường
   let headerRow=-1;
-  const colMap={itemNo:-1,desc:-1,qty:-1,unit:-1,uprice:-1,amount:-1,hsCode:-1};
-  for(let r=0; r<=Math.min(40,rng.e.r); r++){
-    let hits=0;
-    for(let c=0; c<=rng.e.c; c++){
+  const colMap={itemNo:-1,desc:-1,qty:-1,unit:-1,uprice:-1,amount:-1,hsCode:-1,tenViet:-1,dapUprice:-1,dapAmount:-1};
+
+  // Hàm scan 1 row và cập nhật colMap
+  const scanRow=(r)=>{
+    for(let c=0;c<=rng.e.c;c++){
       const cell=ws[XLSX.utils.encode_cell({r,c})];
       if(!cell||!cell.v) continue;
       const vs=String(cell.v).toLowerCase().replace(/[\s'.]/g,'');
-      if(/itemno/.test(vs))           { colMap.itemNo=c; hits++; }
-      if(/description|desc/.test(vs)) { colMap.desc=c; hits++; }
-      if(/qty|q'ty/.test(vs))         { colMap.qty=c; hits++; }
-      if(vs==='unit'||vs==='đvt')     { colMap.unit=c; hits++; }
-      if(/u\/price|uprice|unitprice/.test(vs)) { colMap.uprice=c; hits++; }
-      if(/amount|thànhtiền|thanhtiền/.test(vs)){ colMap.amount=c; hits++; }
-      if(/hscode|^hs$/.test(vs))      { colMap.hsCode=c; hits++; }
+      if(/itemno/.test(vs))                          { colMap.itemNo=c; }
+      if(/^description$|^desc$/.test(vs))            { colMap.desc=c; }
+      // "Description" bất kỳ (kể cả có chữ khác đi kèm)
+      if(vs.includes('description')&&colMap.desc===-1){ colMap.desc=c; }
+      if(/qty|q'ty/.test(vs))                        { colMap.qty=c; }
+      if(vs==='unit'||vs==='đvt')                    { colMap.unit=c; }
+      // U/price: ưu tiên DAP U/price (sub-header), fallback Processing fee U/price
+      if(vs==='u/price'||vs==='uprice'||vs==='unitprice') {
+        // Nếu đây nằm sau cột "DAP VALUE" thì đây là DAP uprice
+        if(colMap.dapUprice===-1) colMap.dapUprice=c;
+        else colMap.uprice=c; // thứ 2 là processing fee uprice — ưu tiên DAP
+      }
+      if(/amount|thànhtiền|thanhtiền/.test(vs)){
+        if(colMap.dapAmount===-1) colMap.dapAmount=c;
+        else colMap.amount=c;
+      }
+      // HS code: "hscode", "mãhscode", "mahscode", "mahs", "hs"
+      if(/hscode/.test(vs)||vs==='hs'||vs==='mahs')  { colMap.hsCode=c; }
+      // Tên VN: label rõ ràng
+      if(/tênhàng|tenhanviet|môtảtiếngviệt/.test(vs)){ colMap.tenViet=c; }
     }
-    if(hits>=2 && colMap.itemNo!==-1){ headerRow=r; break; }
-    if(hits>=3){ headerRow=r; break; }
+  };
+
+  // Pass 1: tìm headerRow (dòng có ≥2 field chính)
+  for(let r=0;r<=Math.min(40,rng.e.r);r++){
+    scanRow(r);
+    const mainHits=[colMap.itemNo,colMap.desc,colMap.qty,colMap.unit].filter(x=>x!==-1).length;
+    if(mainHits>=2&&colMap.itemNo!==-1){ headerRow=r; break; }
+    if(mainHits>=3){ headerRow=r; break; }
   }
 
-  // Fallback: nếu không detect được cột, dùng offset cứng từ cột itemNo
-  // Format này: C=ItemNo, D=Desc, E=Qty, G=Unit, H=U/price, I=Amount
+  // Pass 2: scan thêm tối đa 4 sub-header rows sau headerRow
+  // Đây là nơi "Mã hscode", "DAP VALUE U/price", tên VN thường nằm
+  if(headerRow!==-1){
+    for(let dr=1;dr<=4;dr++) scanRow(headerRow+dr);
+  }
+
+  // Sau khi scan sub-headers, dùng dapUprice/dapAmount nếu uprice/amount chưa có
+  if(colMap.uprice===-1&&colMap.dapUprice!==-1)  colMap.uprice =colMap.dapUprice;
+  if(colMap.amount===-1&&colMap.dapAmount!==-1)  colMap.amount =colMap.dapAmount;
+
+  // Fallback offset từ itemNo nếu vẫn chưa detect
   if(colMap.itemNo!==-1){
     const b=colMap.itemNo;
     if(colMap.desc   ===-1) colMap.desc   =b+1;
     if(colMap.qty    ===-1) colMap.qty    =b+2;
-    if(colMap.unit   ===-1) colMap.unit   =b+4;
+    if(colMap.unit   ===-1) colMap.unit   =b+3;
     if(colMap.uprice ===-1) colMap.uprice =b+5;
     if(colMap.amount ===-1) colMap.amount =b+6;
   }
@@ -921,13 +950,22 @@ function parseInvoice(wb){
       const raw=String(rv(colMap.hsCode)).replace(/\.0$/,'').replace(/\s/g,'');
       if(/^\d{6,10}$/.test(raw)) hsCode=raw;
     }
-    // Tên VN từ cột tenViet (nếu detect được), hoặc từ cột sau hsCode
+    // Tên VN: (1) cột tenViet nếu đã detect, (2) scan từ phải sang trái tìm cột cuối có text dài + tiếng Việt
     if(colMap.tenViet!==-1){
       tenViet=String(rv(colMap.tenViet)).trim();
-    } else if(colMap.hsCode!==-1){
-      // Thử cột kề bên phải cột hsCode — thường chứa tên VN đầy đủ
-      const rawTen=String(rv(colMap.hsCode+1)).trim();
-      if(rawTen.length>5 && !/^\d+$/.test(rawTen)) tenViet=rawTen;
+    } else {
+      // Quét từ cột cuối về phía trái, tìm cột có giá trị text dài (>10 ký tự) và có ký tự tiếng Việt
+      for(let c=rng.e.c; c>=colMap.hsCode+1; c--){
+        const rawTen=String(rv(c)).trim();
+        if(rawTen.length>10 && /[\u00C0-\u024F\u1E00-\u1EFF]/.test(rawTen)){
+          tenViet=rawTen; colMap.tenViet=c; break; // cache lại để không scan lại
+        }
+      }
+      // Fallback: cột ngay sau hsCode
+      if(!tenViet && colMap.hsCode!==-1){
+        const rawTen=String(rv(colMap.hsCode+1)).trim();
+        if(rawTen.length>5 && !/^\d+$/.test(rawTen)) tenViet=rawTen;
+      }
     }
 
     // Từ sheet hs code (nếu có)
